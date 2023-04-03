@@ -2,6 +2,7 @@
 
 mod character_controller;
 mod editor;
+mod light_shafts;
 mod pbr_material;
 mod physics;
 mod skybox;
@@ -9,6 +10,7 @@ mod util;
 
 use character_controller::CharacterController;
 use editor::GameEditorPlugin;
+use light_shafts::{LightShaftsPlugin, SetLightShaftMaterial};
 use pbr_material::{
     setup_curtains, swap_standard_material, CurtainSetBlend, CustomStandardMaterial,
 };
@@ -36,6 +38,7 @@ fn main() {
         .add_plugin(PhysicsStuff)
         .add_plugin(CharacterController)
         .add_plugin(SkyBoxPlugin)
+        .add_plugin(LightShaftsPlugin)
         .add_startup_system(setup)
         .add_systems((swap_standard_material, setup_curtains))
         .run();
@@ -71,4 +74,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         })
         .insert(CurtainSetBlend);
+    commands
+        .spawn(SceneBundle {
+            scene: asset_server.load("../../temp_assets/lightshafts.gltf#Scene0"),
+            ..default()
+        })
+        .insert(SetLightShaftMaterial);
 }

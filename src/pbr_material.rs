@@ -300,7 +300,7 @@ pub fn setup_curtains(
             all_children(children, &children_query, &mut |entity| {
                 if let Ok(mat_h) = mat_handles.get_component(entity) {
                     let mut mat = custom_materials.get_mut(mat_h).unwrap();
-                    mat.alpha_mode = AlphaMode::Add;
+                    mat.alpha_mode = AlphaMode::Premultiplied;
                     found = true;
                 }
             });

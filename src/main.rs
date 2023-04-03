@@ -9,7 +9,9 @@ mod util;
 
 use character_controller::CharacterController;
 use editor::GameEditorPlugin;
-use pbr_material::{swap_standard_material, CustomStandardMaterial};
+use pbr_material::{
+    setup_curtains, swap_standard_material, CurtainSetBlend, CustomStandardMaterial,
+};
 use physics::{AddTrimeshPhysics, PhysicsStuff};
 
 use bevy::{
@@ -35,7 +37,7 @@ fn main() {
         .add_plugin(CharacterController)
         .add_plugin(SkyBoxPlugin)
         .add_startup_system(setup)
-        .add_system(swap_standard_material)
+        .add_systems((swap_standard_material, setup_curtains))
         .run();
 }
 
@@ -51,7 +53,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         // only using a single cascade.
         cascade_shadow_config: CascadeShadowConfigBuilder {
             num_cascades: 1,
-            maximum_distance: 1.6,
+            maximum_distance: 100.0,
             ..default()
         }
         .into(),
@@ -63,4 +65,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         })
         .insert(AddTrimeshPhysics);
+    commands
+        .spawn(SceneBundle {
+            scene: asset_server.load("../../temp_assets/curtain.gltf#Scene0"),
+            ..default()
+        })
+        .insert(CurtainSetBlend);
 }

@@ -87,7 +87,6 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         // Prepare a 'processed' StandardMaterial by sampling all textures to resolve
         // the material members
         var pbr_input: PbrInput;
-
         pbr_input.material.base_color = output_color;
         pbr_input.material.reflectance = material.reflectance;
         pbr_input.material.flags = material.flags;
@@ -158,9 +157,9 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         output_color = mix(output_color, output_color + vec4(vec3(random(uv_rand)), 1.0), 0.008);
 
         let noise_size = 1.5;
-        var noise = noise(in.world_position.xyz * 512.0 * noise_size);
-        noise += noise(in.world_position.xyz * 256.0 * noise_size);
-        noise += noise(in.world_position.xyz * 16.0 * noise_size) * 0.2;
+        var noise = noise(in.world_position.xyz * 512.0 * noise_size) * 0.8;
+        noise += noise(in.world_position.xyz * 256.0 * noise_size) * 0.7;
+        noise += noise(in.world_position.xyz * 16.0 * noise_size) * 0.18;
         noise += noise(in.world_position.xyz * 6.0 * noise_size) * 0.3;
         output_color = mix(output_color, output_color * vec4(vec3(noise), 1.0), 0.18);
         // ---------------- noise

@@ -6,7 +6,7 @@ pub struct PhysicsStuff;
 impl Plugin for PhysicsStuff {
     fn build(&self, app: &mut App) {
         app.add_plugin(RapierPhysicsPlugin::<NoUserData>::default())
-            .add_plugin(RapierDebugRenderPlugin::default())
+            //.add_plugin(RapierDebugRenderPlugin::default())
             .add_system(setup_trimeshe_colliders);
     }
 }

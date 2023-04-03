@@ -1,7 +1,10 @@
 use std::f32::consts::TAU;
 
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping, math::Vec3Swizzles, prelude::*, window::CursorGrabMode,
+    core_pipeline::{fxaa::Fxaa, tonemapping::Tonemapping},
+    math::Vec3Swizzles,
+    prelude::*,
+    window::CursorGrabMode,
 };
 use bevy_rapier3d::prelude::*;
 
@@ -80,7 +83,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(EnvironmentMapLight {
             diffuse_map: asset_server.load("environment_maps/pisa_diffuse_rgb9e5_zstd.ktx2"),
             specular_map: asset_server.load("environment_maps/pisa_specular_rgb9e5_zstd.ktx2"),
-        });
+        })
+        .insert(Fxaa::default());
 
     commands.spawn(
         TextBundle::from_section(

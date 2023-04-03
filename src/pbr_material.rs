@@ -14,6 +14,8 @@ use bevy::{
     },
 };
 
+use crate::util::all_children;
+
 #[derive(AsBindGroup, Reflect, FromReflect, Debug, Clone, TypeUuid)]
 #[uuid = "d8393d59-19b7-46e1-9ae2-d38f35c734ae"]
 #[bind_group_data(CustomStandardMaterialKey)]
@@ -277,6 +279,33 @@ pub fn swap_standard_material(
                     ecmds.remove::<Handle<StandardMaterial>>();
                     ecmds.insert(custom_mat_h.clone());
                 }
+            }
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct CurtainSetBlend;
+
+pub fn setup_curtains(
+    mut commands: Commands,
+    scene_entities: Query<Entity, With<CurtainSetBlend>>,
+    children_query: Query<&Children>,
+    mat_handles: Query<&Handle<CustomStandardMaterial>>,
+    mut custom_materials: ResMut<Assets<CustomStandardMaterial>>,
+) {
+    for entity in scene_entities.iter() {
+        let mut found = false;
+        if let Ok(children) = children_query.get(entity) {
+            all_children(children, &children_query, &mut |entity| {
+                if let Ok(mat_h) = mat_handles.get_component(entity) {
+                    let mut mat = custom_materials.get_mut(mat_h).unwrap();
+                    mat.alpha_mode = AlphaMode::Add;
+                    found = true;
+                }
+            });
+            if found {
+                commands.entity(entity).remove::<CurtainSetBlend>();
             }
         }
     }

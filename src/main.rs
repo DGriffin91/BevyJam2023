@@ -1,19 +1,20 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
+mod character_controller;
 mod editor;
 mod pbr_material;
+mod physics;
+pub mod util;
 
-use bevy_basic_camera::{CameraController, CameraControllerPlugin};
+use character_controller::CharacterController;
 use editor::GameEditorPlugin;
 use pbr_material::{swap_standard_material, CustomStandardMaterial};
-use std::f32::consts::*;
+use physics::{AddTrimeshPhysics, PhysicsStuff};
 
 use bevy::{
-    core_pipeline::tonemapping::Tonemapping,
     pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
     prelude::*,
 };
-use bevy_editor_pls::prelude::*;
 
 fn main() {
     App::new()
@@ -27,32 +28,15 @@ fn main() {
             ..default()
         }))
         .add_plugin(MaterialPlugin::<CustomStandardMaterial>::default())
-        .add_plugin(CameraControllerPlugin)
         .add_plugin(GameEditorPlugin)
+        .add_plugin(PhysicsStuff)
+        .add_plugin(CharacterController)
         .add_startup_system(setup)
         .add_system(swap_standard_material)
         .run();
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands
-        .spawn((
-            Camera3dBundle {
-                transform: Transform::from_xyz(0.7, 0.7, 1.0)
-                    .looking_at(Vec3::new(0.0, 0.3, 0.0), Vec3::Y),
-                tonemapping: Tonemapping::TonyMcMapface,
-                ..default()
-            },
-            EnvironmentMapLight {
-                diffuse_map: asset_server.load("environment_maps/pisa_diffuse_rgb9e5_zstd.ktx2"),
-                specular_map: asset_server.load("environment_maps/pisa_specular_rgb9e5_zstd.ktx2"),
-            },
-        ))
-        .insert(CameraController {
-            sensitivity: 0.5,
-            ..default()
-        });
-
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             shadows_enabled: true,
@@ -70,8 +54,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .into(),
         ..default()
     });
-    commands.spawn(SceneBundle {
-        scene: asset_server.load("../../temp_assets/CopyRoom.gltf#Scene0"),
-        ..default()
-    });
+    commands
+        .spawn(SceneBundle {
+            scene: asset_server.load("../../temp_assets/CopyRoom.gltf#Scene0"),
+            ..default()
+        })
+        .insert(AddTrimeshPhysics);
 }

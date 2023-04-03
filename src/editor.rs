@@ -1,11 +1,11 @@
 use bevy::prelude::*;
-use bevy_basic_camera::CameraController;
 use bevy_editor_pls::{
     controls::{self, EditorControls},
     default_windows::cameras::EditorCamera,
     editor::EditorEvent,
     prelude::*,
 };
+use bevy_fps_controller::controller::LogicalPlayer;
 
 pub struct GameEditorPlugin;
 impl Plugin for GameEditorPlugin {
@@ -43,8 +43,8 @@ fn set_cam3d_controls(
 }
 
 fn sync_editor_free_camera(
-    mut d3_cam: Query<&mut Transform, (With<EditorCamera>, Without<CameraController>)>,
-    player_cam: Query<&Transform, With<CameraController>>,
+    mut d3_cam: Query<&mut Transform, (With<EditorCamera>, Without<LogicalPlayer>)>,
+    player_cam: Query<&Transform, With<LogicalPlayer>>,
     mut editor_events: EventReader<EditorEvent>,
 ) {
     for editor_event in editor_events.iter() {

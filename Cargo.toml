@@ -7,7 +7,8 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 bevy = { version = "0.10", features = ["exr"] }
 bevy_editor_pls = "0.4"
-bevy_basic_camera = { git = "https://github.com/DGriffin91/bevy_basic_camera" }
+bevy_rapier3d = "0.21.0"
+bevy_fps_controller = "0.2.1"
 
 # Enable optimization in debug mode
 [profile.dev]

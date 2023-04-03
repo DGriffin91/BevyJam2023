@@ -1,4 +1,5 @@
 use bevy::{
+    gltf::GltfExtras,
     pbr::{
         MaterialPipeline, MaterialPipelineKey, StandardMaterialFlags, PBR_PREPASS_SHADER_HANDLE,
     },
@@ -12,9 +13,8 @@ use bevy::{
             ShaderType, SpecializedMeshPipelineError, TextureFormat,
         },
     },
+    utils::HashMap,
 };
-
-use crate::util::all_children;
 
 #[derive(AsBindGroup, Reflect, FromReflect, Debug, Clone, TypeUuid)]
 #[uuid = "d8393d59-19b7-46e1-9ae2-d38f35c734ae"]
@@ -247,6 +247,8 @@ pub fn swap_standard_material(
     entites: Query<(Entity, &Handle<StandardMaterial>)>,
     standard_materials: Res<Assets<StandardMaterial>>,
     mut custom_materials: ResMut<Assets<CustomStandardMaterial>>,
+    extras: Query<&GltfExtras>,
+    parent: Query<&Parent>,
 ) {
     for event in material_events.iter() {
         let handle = match event {
@@ -275,6 +277,30 @@ pub fn swap_standard_material(
             });
             for (entity, entity_mat_h) in entites.iter() {
                 if entity_mat_h == handle {
+                    if let Ok(parent) = parent.get(entity) {
+                        if let Ok(extras) = extras.get(**parent) {
+                            if let Ok(fields) =
+                                serde_json::from_str::<HashMap<String, String>>(&extras.value)
+                            {
+                                if let Some(alpha) = fields.get("AlphaMode") {
+                                    if let Some(mut mat) = custom_materials.get_mut(&custom_mat_h) {
+                                        let alpha = alpha.to_lowercase();
+                                        // Set on object properties
+                                        // string with ex: AlphaMode add
+                                        if alpha == "premultiplied" {
+                                            mat.alpha_mode = AlphaMode::Premultiplied;
+                                        } else if alpha == "multiply" {
+                                            mat.alpha_mode = AlphaMode::Multiply;
+                                        } else if alpha == "add" {
+                                            mat.alpha_mode = AlphaMode::Add;
+                                        } else if alpha == "blend" {
+                                            mat.alpha_mode = AlphaMode::Blend;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                     let mut ecmds = commands.entity(entity);
                     ecmds.remove::<Handle<StandardMaterial>>();
                     ecmds.insert(custom_mat_h.clone());
@@ -284,6 +310,7 @@ pub fn swap_standard_material(
     }
 }
 
+/*
 #[derive(Component)]
 pub struct CurtainSetBlend;
 
@@ -310,3 +337,4 @@ pub fn setup_curtains(
         }
     }
 }
+*/

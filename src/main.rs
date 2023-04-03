@@ -11,9 +11,7 @@ mod util;
 use character_controller::CharacterController;
 use editor::GameEditorPlugin;
 use light_shafts::{LightShaftsPlugin, SetLightShaftMaterial};
-use pbr_material::{
-    setup_curtains, swap_standard_material, CurtainSetBlend, CustomStandardMaterial,
-};
+use pbr_material::{swap_standard_material, CustomStandardMaterial};
 use physics::{AddTrimeshPhysics, PhysicsStuff};
 
 use bevy::{
@@ -40,7 +38,7 @@ fn main() {
         .add_plugin(SkyBoxPlugin)
         .add_plugin(LightShaftsPlugin)
         .add_startup_system(setup)
-        .add_systems((swap_standard_material, setup_curtains))
+        .add_system(swap_standard_material)
         .run();
 }
 
@@ -68,12 +66,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         })
         .insert(AddTrimeshPhysics);
-    commands
-        .spawn(SceneBundle {
-            scene: asset_server.load("../../temp_assets/curtain.gltf#Scene0"),
-            ..default()
-        })
-        .insert(CurtainSetBlend);
+    commands.spawn(SceneBundle {
+        scene: asset_server.load("../../temp_assets/curtain.gltf#Scene0"),
+        ..default()
+    });
     commands
         .spawn(SceneBundle {
             scene: asset_server.load("../../temp_assets/lightshafts.gltf#Scene0"),

@@ -19,6 +19,57 @@ struct FragmentInput {
     #import bevy_pbr::mesh_vertex_output
 };
 
+// https://simonharris.co/making-a-noise-film-grain-post-processing-effect-from-scratch-in-threejs/
+fn random(p: vec2<f32>) -> f32 {
+    let K1 = vec2(
+        23.14069263277926, // e^pi (Gelfond's constant)
+        2.665144142690225 // 2^sqrt(2) (Gelfond–Schneider constant)
+    );
+    return fract( cos( dot(p, K1) ) * 12345.6789 );
+}
+
+fn uhash(a: u32, b: u32) -> u32 { 
+    var x = ((a * 1597334673u) ^ (b * 3812015801u));
+    // from https://nullprogram.com/blog/2018/07/31/
+    x = x ^ (x >> 16u);
+    x = x * 0x7feb352du;
+    x = x ^ (x >> 15u);
+    x = x * 0x846ca68bu;
+    x = x ^ (x >> 16u);
+    return x;
+}
+
+fn unormf(n: u32) -> f32 { 
+    return f32(n) * (1.0 / f32(0xffffffffu)); 
+}
+
+fn hash_noise(ifrag_coord: vec2<i32>, frame: u32) -> f32 {
+    let urnd = uhash(u32(ifrag_coord.x), (u32(ifrag_coord.y) << 11u) + frame);
+    return unormf(urnd);
+}
+
+// replace this by something better
+fn hash(p: vec3<f32>) -> f32 {
+    var p = fract(p * 0.3183099 + .1);
+	p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+}
+
+fn noise(x: vec3<f32>) -> f32 {
+    let i = vec3(floor(x));
+    var f = fract(x);
+    f = f * f * (3.0 - 2.0 * f);
+	
+    return mix(mix(mix( hash(i+vec3(0.0,0.0,0.0)), 
+                        hash(i+vec3(1.0,0.0,0.0)),f.x),
+                   mix( hash(i+vec3(0.0,1.0,0.0)), 
+                        hash(i+vec3(1.0,1.0,0.0)),f.x),f.y),
+               mix(mix( hash(i+vec3(0.0,0.0,1.0)), 
+                        hash(i+vec3(1.0,0.0,1.0)),f.x),
+                   mix( hash(i+vec3(0.0,1.0,1.0)), 
+                        hash(i+vec3(1.0,1.0,1.0)),f.x),f.y),f.z);
+}
+
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
     var output_color: vec4<f32> = material.base_color;
@@ -99,6 +150,21 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
         pbr_input.flags = mesh.flags;
 
         output_color = pbr(pbr_input);
+
+
+        // ---------------- noise
+        var uv_rand = in.frag_coord.xy / vec2<f32>(view.viewport.zw);
+        uv_rand.y *= random(vec2(uv_rand.y, globals.time));
+        output_color = mix(output_color, output_color + vec4(vec3(random(uv_rand)), 1.0), 0.008);
+
+        let noise_size = 1.5;
+        var noise = noise(in.world_position.xyz * 512.0 * noise_size);
+        noise += noise(in.world_position.xyz * 256.0 * noise_size);
+        noise += noise(in.world_position.xyz * 16.0 * noise_size) * 0.2;
+        noise += noise(in.world_position.xyz * 6.0 * noise_size) * 0.3;
+        output_color = mix(output_color, output_color * vec4(vec3(noise), 1.0), 0.18);
+        // ---------------- noise
+
     } else {
         output_color = alpha_discard(material, output_color);
     }
@@ -107,6 +173,9 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
     if (fog.mode != FOG_MODE_OFF && (material.flags & STANDARD_MATERIAL_FLAGS_FOG_ENABLED_BIT) != 0u) {
         output_color = apply_fog(output_color, in.world_position.xyz, view.world_position.xyz);
     }
+
+
+
 
 #ifdef TONEMAP_IN_SHADER
         output_color = tone_mapping(output_color);
@@ -123,5 +192,8 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
 #ifdef PREMULTIPLY_ALPHA
         output_color = premultiply_alpha(material.flags, output_color);
 #endif
+
+
+
     return output_color;
 }

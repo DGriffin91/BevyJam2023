@@ -67,6 +67,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
                     fov: TAU / 5.0,
                     ..default()
                 }),
+                camera: Camera {
+                    hdr: true,
+                    ..default()
+                },
                 tonemapping: Tonemapping::TonyMcMapface,
                 transform: Transform::from_xyz(0.0, 0.0, 0.0),
                 ..default()

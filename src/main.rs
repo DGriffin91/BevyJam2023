@@ -4,7 +4,8 @@ mod character_controller;
 mod editor;
 mod pbr_material;
 mod physics;
-pub mod util;
+mod skybox;
+mod util;
 
 use character_controller::CharacterController;
 use editor::GameEditorPlugin;
@@ -15,6 +16,7 @@ use bevy::{
     pbr::{CascadeShadowConfigBuilder, DirectionalLightShadowMap},
     prelude::*,
 };
+use skybox::SkyBoxPlugin;
 
 fn main() {
     App::new()
@@ -31,6 +33,7 @@ fn main() {
         .add_plugin(GameEditorPlugin)
         .add_plugin(PhysicsStuff)
         .add_plugin(CharacterController)
+        .add_plugin(SkyBoxPlugin)
         .add_startup_system(setup)
         .add_system(swap_standard_material)
         .run();

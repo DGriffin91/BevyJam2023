@@ -9,6 +9,7 @@ bevy = { version = "0.10", features = ["exr"] }
 bevy_editor_pls = "0.4"
 bevy_rapier3d = "0.21.0"
 bevy_fps_controller = "0.2.1"
+bevy_mod_mesh_tools = { git = "https://github.com/DGriffin91/bevy_mod_mesh_tools" }
 
 # Enable optimization in debug mode
 [profile.dev]

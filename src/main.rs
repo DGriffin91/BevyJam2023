@@ -60,20 +60,26 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .into(),
         ..default()
     });
+    //commands
+    //    .spawn(SceneBundle {
+    //        scene: asset_server.load("../../temp_assets/CopyRoom.gltf#Scene0"),
+    //        ..default()
+    //    })
+    //    .insert(AddTrimeshPhysics);
+    //commands.spawn(SceneBundle {
+    //    scene: asset_server.load("../../temp_assets/curtain.gltf#Scene0"),
+    //    ..default()
+    //});
+    //commands
+    //    .spawn(SceneBundle {
+    //        scene: asset_server.load("../../temp_assets/lightshafts.gltf#Scene0"),
+    //        ..default()
+    //    })
+    //    .insert(SetLightShaftMaterial);
     commands
         .spawn(SceneBundle {
-            scene: asset_server.load("../../temp_assets/CopyRoom.gltf#Scene0"),
+            scene: asset_server.load("../../temp_assets/material_test.gltf#Scene0"),
             ..default()
         })
         .insert(AddTrimeshPhysics);
-    commands.spawn(SceneBundle {
-        scene: asset_server.load("../../temp_assets/curtain.gltf#Scene0"),
-        ..default()
-    });
-    commands
-        .spawn(SceneBundle {
-            scene: asset_server.load("../../temp_assets/lightshafts.gltf#Scene0"),
-            ..default()
-        })
-        .insert(SetLightShaftMaterial);
 }

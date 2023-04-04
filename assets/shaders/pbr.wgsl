@@ -11,7 +11,8 @@
 //#import bevy_pbr::shadows
 #import "shaders/shadows.wgsl"
 #import bevy_pbr::fog
-#import bevy_pbr::pbr_functions
+//#import bevy_pbr::pbr_functions
+#import "shaders/pbr_functions.wgsl"
 
 struct FragmentInput {
     @builtin(front_facing) is_front: bool,
@@ -24,8 +25,11 @@ struct FragmentInput {
 @fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
     var output_color: vec4<f32> = material.base_color;
+// Used for material props
+var use_vertex_colors = false;
 #ifdef VERTEX_COLORS
-    output_color = output_color * in.color;
+    //output_color = output_color * in.color;
+    use_vertex_colors = true;
 #endif
 #ifdef VERTEX_UVS
     if ((material.flags & STANDARD_MATERIAL_FLAGS_BASE_COLOR_TEXTURE_BIT) != 0u) {
@@ -53,8 +57,8 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
 #endif
         pbr_input.material.emissive = emissive;
 
-        var metallic: f32 = material.metallic;
-        var perceptual_roughness: f32 = material.perceptual_roughness;
+        var metallic: f32 = select(material.metallic, in.color.g, use_vertex_colors); // Griffin
+        var perceptual_roughness: f32 = select(material.perceptual_roughness, saturate(in.color.r), use_vertex_colors); // Griffin
 #ifdef VERTEX_UVS
         if ((material.flags & STANDARD_MATERIAL_FLAGS_METALLIC_ROUGHNESS_TEXTURE_BIT) != 0u) {
             let metallic_roughness = textureSample(metallic_roughness_texture, metallic_roughness_sampler, in.uv);
@@ -142,7 +146,6 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
 #ifdef PREMULTIPLY_ALPHA
         output_color = premultiply_alpha(material.flags, output_color);
 #endif
-
 
 
     return output_color;

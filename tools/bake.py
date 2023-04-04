@@ -1,5 +1,43 @@
 import bpy
 import math
+import bmesh
+
+def set_vertex_colors(obj, color_layer_name, mat_index, values):
+    mesh = obj.data
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+
+    color_layer = bm.loops.layers.color.get(color_layer_name)
+
+    if not color_layer:
+        color_layer = bm.loops.layers.color.new(color_layer_name)
+
+    for face in bm.faces:
+        if face.material_index == mat_index:
+            for loop in face.loops:
+                loop[color_layer] = (values[0], values[1], loop[color_layer].z, loop[color_layer].w)
+
+    bm.to_mesh(mesh)
+    bm.free()
+
+    # Set the color layer as the active render layer
+    obj.data.vertex_colors[color_layer_name].active_render = True
+
+def transfer_material_props_to_verts(obj):
+  for idx, mat_slot in enumerate(obj.material_slots):
+       if mat_slot.material and mat_slot.material.use_nodes:
+           nodes = mat_slot.material.node_tree.nodes
+           principled_bsdf = None
+   
+           for node in nodes:
+               if node.type == 'BSDF_PRINCIPLED':
+                   principled_bsdf = node
+                   break
+   
+           if principled_bsdf:
+               roughness_value = principled_bsdf.inputs['Roughness'].default_value
+               metallic = principled_bsdf.inputs['Metallic'].default_value
+               set_vertex_colors(obj, 'Attribute', idx, (roughness_value, metallic))
 
 def proc(bake_res, resize_res, auto_smooth, unwrap):
     # Get selected objects
@@ -18,6 +56,7 @@ def proc(bake_res, resize_res, auto_smooth, unwrap):
         if obj.type == 'MESH':
             mesh_objects.append(obj)
             bpy.ops.object.make_single_user(type='SELECTED_OBJECTS', object=True, obdata=True)
+            transfer_material_props_to_verts(obj)
     
     if not mesh_objects:
         print("No suitable objects found!")
@@ -92,9 +131,12 @@ def proc(bake_res, resize_res, auto_smooth, unwrap):
         obj.data.materials.clear()
         obj.data.materials.append(material)
 
+        if len(obj.data.vertex_colors) > 0:
+            obj.data.vertex_colors['Attribute'].active_render = True
+
 bpy.context.scene.cycles.samples = 64
 bpy.context.scene.cycles.adaptive_threshold = 0.1
 proc(4096, 1024, auto_smooth = True, unwrap = True)
 
-# for curtains:
-# proc(2048, 256, auto_smooth = False, unwrap = False)
+#for curtains
+#proc(2048, 256, auto_smooth = False, unwrap = False)

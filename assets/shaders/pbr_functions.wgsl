@@ -6,7 +6,7 @@
 #import bevy_pbr::environment_map
 #endif
 
-fn alpha_discard(material: StandardMaterial, output_color: vec4<f32>) -> vec4<f32> {
+fn alpha_discard(material: CustomStandardMaterial, output_color: vec4<f32>) -> vec4<f32> {
     var color = output_color;
     let alpha_mode = material.flags & STANDARD_MATERIAL_FLAGS_ALPHA_MODE_RESERVED_BITS;
     if alpha_mode == STANDARD_MATERIAL_FLAGS_ALPHA_MODE_OPAQUE {
@@ -119,7 +119,7 @@ fn calculate_view(
 }
 
 struct PbrInput {
-    material: StandardMaterial,
+    material: CustomStandardMaterial,
     occlusion: f32,
     frag_coord: vec4<f32>,
     world_position: vec4<f32>,
@@ -136,25 +136,25 @@ struct PbrInput {
 };
 
 // Creates a PbrInput with default values
-fn pbr_input_new() -> PbrInput {
-    var pbr_input: PbrInput;
-
-    pbr_input.material = standard_material_new();
-    pbr_input.occlusion = 1.0;
-
-    pbr_input.frag_coord = vec4<f32>(0.0, 0.0, 0.0, 1.0);
-    pbr_input.world_position = vec4<f32>(0.0, 0.0, 0.0, 1.0);
-    pbr_input.world_normal = vec3<f32>(0.0, 0.0, 1.0);
-
-    pbr_input.is_orthographic = false;
-
-    pbr_input.N = vec3<f32>(0.0, 0.0, 1.0);
-    pbr_input.V = vec3<f32>(1.0, 0.0, 0.0);
-
-    pbr_input.flags = 0u;
-
-    return pbr_input;
-}
+//fn pbr_input_new() -> PbrInput {
+//    var pbr_input: PbrInput;
+//
+//    pbr_input.material = standard_material_new();
+//    pbr_input.occlusion = 1.0;
+//
+//    pbr_input.frag_coord = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+//    pbr_input.world_position = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+//    pbr_input.world_normal = vec3<f32>(0.0, 0.0, 1.0);
+//
+//    pbr_input.is_orthographic = false;
+//
+//    pbr_input.N = vec3<f32>(0.0, 0.0, 1.0);
+//    pbr_input.V = vec3<f32>(1.0, 0.0, 0.0);
+//
+//    pbr_input.flags = 0u;
+//
+//    return pbr_input;
+//}
 
 #ifndef NORMAL_PREPASS
 fn pbr(
@@ -240,12 +240,14 @@ fn pbr(
     }
 
     // Ambient light (indirect)
-    var indirect_light = ambient_light(in.world_position, in.N, in.V, NdotV, diffuse_color, F0, perceptual_roughness, occlusion);
+    // Griffin
+    var indirect_light = vec3(0.0);//ambient_light(in.world_position, in.N, in.V, NdotV, diffuse_color, F0, perceptual_roughness, occlusion);
 
     // Environment map light (indirect)
 #ifdef ENVIRONMENT_MAP
     let environment_light = environment_map_light(perceptual_roughness, roughness, diffuse_color, NdotV, f_ab, in.N, R, F0);
-    indirect_light += (environment_light.diffuse * occlusion) + environment_light.specular * 20.0; //Griffin boost env specular
+    indirect_light += (environment_light.diffuse * occlusion * material.env_diff) + 
+                       environment_light.specular * (1.6 * metallic + 0.1) * material.env_spec; //Griffin boost env specular
 #endif
 
     let emissive_light = emissive.rgb * output_color.a;

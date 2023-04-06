@@ -1,7 +1,45 @@
 #import "shaders/bicubic.wgsl"
 
 #import bevy_pbr::mesh_view_bindings
-#import bevy_pbr::pbr_bindings
+//#import bevy_pbr::pbr_bindings
+
+struct CustomStandardMaterial {
+    base_color: vec4<f32>,
+    emissive: vec4<f32>,
+    perceptual_roughness: f32,
+    metallic: f32,
+    reflectance: f32,
+    // 'flags' is a bit field indicating various options. u32 is 32 bits so we have up to 32 options.
+    flags: u32,
+    alpha_cutoff: f32,
+    env_spec: f32,
+    env_diff: f32,
+};
+
+#import bevy_pbr::pbr_types
+@group(1) @binding(0)
+var<uniform> material: CustomStandardMaterial;
+@group(1) @binding(1)
+var base_color_texture: texture_2d<f32>;
+@group(1) @binding(2)
+var base_color_sampler: sampler;
+@group(1) @binding(3)
+var emissive_texture: texture_2d<f32>;
+@group(1) @binding(4)
+var emissive_sampler: sampler;
+@group(1) @binding(5)
+var metallic_roughness_texture: texture_2d<f32>;
+@group(1) @binding(6)
+var metallic_roughness_sampler: sampler;
+@group(1) @binding(7)
+var detail_texture: texture_2d<f32>;
+@group(1) @binding(8)
+var detail_sampler: sampler;
+@group(1) @binding(9)
+var normal_map_texture: texture_2d<f32>;
+@group(1) @binding(10)
+var normal_map_sampler: sampler;
+
 #import bevy_pbr::mesh_bindings
 
 #import bevy_pbr::utils
@@ -14,6 +52,8 @@
 //#import bevy_pbr::pbr_functions
 #import "shaders/pbr_functions.wgsl"
 
+#import "shaders/grass.wgsl"
+
 struct FragmentInput {
     @builtin(front_facing) is_front: bool,
     @builtin(position) frag_coord: vec4<f32>,
@@ -23,19 +63,45 @@ struct FragmentInput {
 #import "shaders/common.wgsl"
 
 @fragment
+fn fragment_fast(in: FragmentInput) -> @location(0) vec4<f32> {
+    var emit_image = textureSampleBicubic(emissive_texture, emissive_sampler, in.uv).rgb;
+    return vec4(emit_image, 1.0);
+}
+
+@fragment
 fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
+    var N = normalize(in.world_normal);
+    var V = normalize(view.world_position.xyz - in.world_position.xyz);
+
     var output_color: vec4<f32> = material.base_color;
+    var metallic = material.metallic; // Griffin
+    var perceptual_roughness = material.perceptual_roughness; // Griffin
 // Used for material props
 var use_vertex_colors = false;
 #ifdef VERTEX_COLORS
     //output_color = output_color * in.color;
-    use_vertex_colors = true;
+    metallic = in.color.g; // Griffin
+    perceptual_roughness = saturate(in.color.r); // Griffin
 #endif
 #ifdef VERTEX_UVS
     if ((material.flags & STANDARD_MATERIAL_FLAGS_BASE_COLOR_TEXTURE_BIT) != 0u) {
         output_color = output_color * textureSample(base_color_texture, base_color_sampler, in.uv);
     }
 #endif
+
+
+    
+    // ---------------- Texture noise
+
+    var detail = 0.0;
+#ifdef GRASS
+  output_color = vec4(grass(V, in.world_position.xz * 0.08), 1.0);
+#else
+    detail += textureSample(detail_texture, detail_sampler, in.uv * 0.1).r * 1.5;
+    detail += textureSample(detail_texture, detail_sampler, in.uv * 0.8).r * 0.5;
+    detail += textureSampleBias(detail_texture, detail_sampler, in.uv * 8.0, -1.5).r * 1.5;
+#endif
+    // ---------------- Texture noise
 
     // NOTE: Unlit bit not set means == 0 is true, so the true case is if lit
     if ((material.flags & STANDARD_MATERIAL_FLAGS_UNLIT_BIT) == 0u) {
@@ -52,13 +118,11 @@ var use_vertex_colors = false;
 #ifdef VERTEX_UVS
         if ((material.flags & STANDARD_MATERIAL_FLAGS_EMISSIVE_TEXTURE_BIT) != 0u) {
             var emit_image = textureSampleBicubic(emissive_texture, emissive_sampler, in.uv).rgb;
-            emissive = vec4<f32>(emissive.rgb * emit_image, 1.0);
+            emissive = vec4<f32>(emissive.rgb * pow(emit_image, vec3(1.3)), 1.0);
         }
 #endif
         pbr_input.material.emissive = emissive;
 
-        var metallic: f32 = select(material.metallic, in.color.g, use_vertex_colors); // Griffin
-        var perceptual_roughness: f32 = select(material.perceptual_roughness, saturate(in.color.r), use_vertex_colors); // Griffin
 #ifdef VERTEX_UVS
         if ((material.flags & STANDARD_MATERIAL_FLAGS_METALLIC_ROUGHNESS_TEXTURE_BIT) != 0u) {
             let metallic_roughness = textureSample(metallic_roughness_texture, metallic_roughness_sampler, in.uv);
@@ -71,11 +135,11 @@ var use_vertex_colors = false;
         pbr_input.material.perceptual_roughness = perceptual_roughness;
 
         var occlusion: f32 = 1.0;
-#ifdef VERTEX_UVS
-        if ((material.flags & STANDARD_MATERIAL_FLAGS_OCCLUSION_TEXTURE_BIT) != 0u) {
-            occlusion = textureSample(occlusion_texture, occlusion_sampler, in.uv).r;
-        }
-#endif
+//#ifdef VERTEX_UVS
+//        if ((material.flags & STANDARD_MATERIAL_FLAGS_OCCLUSION_TEXTURE_BIT) != 0u) {
+//            occlusion = textureSample(occlusion_texture, occlusion_sampler, in.uv).r;
+//        }
+//#endif
         pbr_input.frag_coord = in.frag_coord;
         pbr_input.world_position = in.world_position;
         pbr_input.world_normal = prepare_world_normal(
@@ -102,22 +166,22 @@ var use_vertex_colors = false;
         pbr_input.occlusion = occlusion;
 
         pbr_input.flags = mesh.flags;
-
+#ifdef GRASS
+        output_color *= pbr(pbr_input) * 3.0;
+#else
         output_color = pbr(pbr_input);
+#endif
 
 
         // ---------------- noise
+        
+        // TODO make optional, maybe put in post proc shader (with fxaa?)
         var uv_rand = in.frag_coord.xy / vec2<f32>(view.viewport.zw);
         uv_rand.y *= random(vec2(uv_rand.y, globals.time));
-        output_color = mix(output_color, output_color + vec4(vec3(random(uv_rand)), 1.0), 0.008);
+        output_color = mix(output_color, output_color + vec4(vec3(random(uv_rand)), 0.0), 0.005);
 
-        let noise_size = 1.5;
-        var noise = noise(in.world_position.xyz * 512.0 * noise_size) * 0.8;
-        noise += noise(in.world_position.xyz * 256.0 * noise_size) * 0.7;
-        noise += noise(in.world_position.xyz * 16.0 * noise_size) * 0.18;
-        noise += noise(in.world_position.xyz * 6.0 * noise_size) * 0.3;
-        output_color = mix(output_color, output_color * vec4(vec3(noise), 1.0), 0.18);
-        // ---------------- noise
+        output_color = mix(output_color, output_color * vec4(vec3(detail), 1.0), 0.175);
+
 
     } else {
         output_color = alpha_discard(material, output_color);

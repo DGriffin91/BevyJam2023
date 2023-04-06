@@ -115,6 +115,8 @@ def convert_exr_to_ktx2(input_file, output_file):
         "CompressonatorCLI ",
         "-fd",
         "BC6H",
+        "-mipsize",
+        "256",
         input_file,
         output_file,
     ]
@@ -166,19 +168,24 @@ def auto_settings():
 def modify_gltf(filepath):
     with open(filepath, "r") as f:
         data = f.read()
-        data = data.replace("png", "ktx2")
         data = data.replace('"mimeType":"image/png",', "")
+        data = data.replace('"mimeType":"image/jpg",', "")
+        data = data.replace("png", "ktx2")
+        file_root = bpy.path.basename(bpy.data.filepath).split(".")[0]
+        print(f"{file_root}.ktx2", f"{get_name()}.ktx2")
+        data = data.replace(f"{file_root}.ktx2", f"{get_name()}_lightmap.ktx2")
 
     with open(filepath, "w") as f:
         f.write(data)
 
 
 def get_name():
+    file_name = bpy.path.basename(bpy.data.filepath)
     words = C.collection.name.split()
     if len(words) > 0:
-        return words[0]
+        return f"{file_name}_{words[0]}"
     else:
-        return C.collection.name
+        return f"{file_name}_{C.collection.name}"
 
 
 def delete_file_if_recent(filepath, time_threshold=30):
@@ -200,8 +207,36 @@ def delete_file_if_recent(filepath, time_threshold=30):
 
 def delete_intermediate():
     name = get_name()
-    delete_file_if_recent(os.path.join(bpy.path.abspath("//"), f"bake_{name}.png"))
-    delete_file_if_recent(os.path.join(bpy.path.abspath("//"), f"bake_{name}.exr"))
+    delete_file_if_recent(os.path.join(bpy.path.abspath("//"), f"{name}_lightmap.png"))
+    # delete_file_if_recent(os.path.join(bpy.path.abspath("//"), f"{name}_lightmap.exr"))
+
+
+def override(obj):
+    return {
+        "selected_objects": bpy.context.selected_objects,
+        "active_object": bpy.context.view_layer.objects.active,
+        "object": obj,
+        "scene": bpy.context.scene,
+        "area": next(
+            area for area in bpy.context.screen.areas if area.type == "VIEW_3D"
+        ),
+        "region": next(
+            region for region in bpy.context.area.regions if region.type == "WINDOW"
+        ),
+        "window": bpy.context.window,
+        "screen": bpy.context.screen,
+        "workspace": bpy.context.workspace,
+    }
+
+
+def disable_shadows():
+    disabled_shadows = []
+    selected_objects = bpy.context.selected_objects
+    for obj in selected_objects:
+        if obj.type == "LIGHT" and obj.data.use_shadow:
+            obj.data.use_shadow = False
+            disabled_shadows.append(obj)
+    return disabled_shadows
 
 
 def proc(bake_res, resize_res, auto_smooth, unwrap):
@@ -210,25 +245,35 @@ def proc(bake_res, resize_res, auto_smooth, unwrap):
 
     # Check if selected objects are mesh types and have at least one modifier
     mesh_objects = []
+    print(
+        "hide bools, convert text/curve to mesh, transfer material props to vertex attributes"
+    )
     for obj in selected_objects:
         if "boolean" in obj.name.lower():
             # Hide the object in the viewport
             obj.hide_viewport = True
             obj.hide_render = True
-        if obj.type == "CURVE":
-            # Convert the curve to mesh
-            bpy.ops.object.convert(target="MESH")
-        if obj.type == "MESH":
-            mesh_objects.append(obj)
+            obj.select_set(False)
+        else:
             bpy.ops.object.make_single_user(
                 type="SELECTED_OBJECTS", object=True, obdata=True
             )
-            transfer_material_props_to_verts(obj)
+            if obj.type == "CURVE" or obj.type == "FONT":
+                # Convert the curve/font to mesh
+                selection = obj.select_get()
+                obj.select_set(True)
+                bpy.context.view_layer.objects.active = obj
+                bpy.ops.object.convert(override(obj), target="MESH")
+                obj.select_set(selection)
+            if obj.type == "MESH":
+                mesh_objects.append(obj)
+                transfer_material_props_to_verts(obj)
 
     if not mesh_objects:
         print("No suitable objects found!")
     else:
         # Apply all modifiers on selected objects
+        print("apply all modifiers / init materials")
         for obj in mesh_objects:
             bpy.context.view_layer.objects.active = obj
             for modifier in obj.modifiers:
@@ -244,11 +289,13 @@ def proc(bake_res, resize_res, auto_smooth, unwrap):
                 obj.data.materials[0].use_nodes = True
 
         # Join selected objects into one mesh
+        print("Join")
         bpy.ops.object.join()
         if unwrap:
+            print("Unwrap")
             # Smart UV project
             angle_limit = math.radians(66)
-            island_margin = 0.003
+            island_margin = 0.001
             area_weight = 1.0
             correct_aspect = True
 
@@ -267,12 +314,14 @@ def proc(bake_res, resize_res, auto_smooth, unwrap):
         # Create a new texture and assign it to every material
         texture = bpy.data.textures.new(name="Texture", type="IMAGE")
 
+        print("create image")
         image = bpy.data.images.new(
-            name=f"bake_{get_name()}",
+            name=f"{get_name()}_lightmap",
             width=bake_res,
             height=bake_res,
             float_buffer=True,
         )
+        print("add image to material")
         for material in bpy.data.materials:
             # Check if material has a node tree
             if material.node_tree is not None:
@@ -287,12 +336,19 @@ def proc(bake_res, resize_res, auto_smooth, unwrap):
         bpy.context.active_object.select_set(True)
         obj.data.use_auto_smooth = auto_smooth
 
+        print("transform_apply")
+        bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+
         # Run the bake
+        print("bake")
         bpy.ops.object.bake(type="COMBINED")
 
+        print("scale {resize_res}")
         image.scale(resize_res, resize_res)
+        print("save exr")
         save_image_as_exr(image)
 
+        print("assign material")
         # Create a new material for the object
         material = bpy.data.materials.new(name="Material")
         material.use_nodes = True
@@ -312,20 +368,31 @@ def proc(bake_res, resize_res, auto_smooth, unwrap):
 
         if len(obj.data.vertex_colors) > 0:
             obj.data.vertex_colors["Attribute"].active_render = True
+    return disabled_shadows
 
 
 bpy.context.scene.cycles.samples = 64
 bpy.context.scene.cycles.adaptive_threshold = 0.1
+disabled_shadows = disable_shadows()
 proc(**auto_settings())
-modify_gltf(export_gltf(C.collection.name))
-delete_intermediate()
+modify_gltf(export_gltf(get_name()))
+for obj in disabled_shadows:
+    obj.data.use_shadow = True
+# delete_intermediate()
 
 # for curtains
 # proc(2048, 256, auto_smooth = False, unwrap = False)
 
 """
 Process:
+copy file and rename with Exp
 Select collection to be baked
 right click, pick select objects
 run script
+----
+curtain:
+needs to be already unwrapped
+after bake re-connect to emit on pbr material
+alpha 0.5
+object props: AlphaMode premultiplied
 """

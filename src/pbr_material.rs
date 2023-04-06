@@ -6,6 +6,7 @@ use bevy::{
     prelude::*,
     reflect::{FromReflect, Reflect, TypeUuid},
     render::{
+        extract_component::ExtractComponent,
         mesh::MeshVertexBufferLayout,
         render_asset::RenderAssets,
         render_resource::{
@@ -15,6 +16,9 @@ use bevy::{
     },
     utils::HashMap,
 };
+
+use crate::assets::TextureAssets;
+use crate::util::all_children;
 
 #[derive(AsBindGroup, Reflect, FromReflect, Debug, Clone, TypeUuid)]
 #[uuid = "d8393d59-19b7-46e1-9ae2-d38f35c734ae"]
@@ -43,7 +47,7 @@ pub struct CustomStandardMaterial {
     pub flip_normal_map_y: bool,
     #[texture(7)]
     #[sampler(8)]
-    pub occlusion_texture: Option<Handle<Image>>,
+    pub detail_texture: Option<Handle<Image>>,
     pub double_sided: bool,
     #[reflect(ignore)]
     pub cull_mode: Option<Face>,
@@ -51,6 +55,9 @@ pub struct CustomStandardMaterial {
     pub fog_enabled: bool,
     pub alpha_mode: AlphaMode,
     pub depth_bias: f32,
+    pub grass: bool,
+    pub env_spec: f32,
+    pub env_diff: f32,
 }
 
 impl Default for CustomStandardMaterial {
@@ -64,7 +71,7 @@ impl Default for CustomStandardMaterial {
             metallic: 0.0,
             metallic_roughness_texture: None,
             reflectance: 0.5,
-            occlusion_texture: None,
+            detail_texture: None,
             normal_map_texture: None,
             flip_normal_map_y: false,
             double_sided: false,
@@ -73,6 +80,9 @@ impl Default for CustomStandardMaterial {
             fog_enabled: true,
             alpha_mode: AlphaMode::Opaque,
             depth_bias: 0.0,
+            grass: false,
+            env_diff: 1.0,
+            env_spec: 1.0,
         }
     }
 }
@@ -109,6 +119,8 @@ pub struct CustomStandardMaterialUniform {
     pub reflectance: f32,
     pub flags: u32,
     pub alpha_cutoff: f32,
+    pub env_spec: f32,
+    pub env_diff: f32,
 }
 
 impl AsBindGroupShaderType<CustomStandardMaterialUniform> for CustomStandardMaterial {
@@ -126,9 +138,9 @@ impl AsBindGroupShaderType<CustomStandardMaterialUniform> for CustomStandardMate
         if self.metallic_roughness_texture.is_some() {
             flags |= StandardMaterialFlags::METALLIC_ROUGHNESS_TEXTURE;
         }
-        if self.occlusion_texture.is_some() {
-            flags |= StandardMaterialFlags::OCCLUSION_TEXTURE;
-        }
+        //if self.occlusion_texture.is_some() {
+        //    flags |= StandardMaterialFlags::OCCLUSION_TEXTURE;
+        //}
         if self.double_sided {
             flags |= StandardMaterialFlags::DOUBLE_SIDED;
         }
@@ -177,12 +189,15 @@ impl AsBindGroupShaderType<CustomStandardMaterialUniform> for CustomStandardMate
             reflectance: self.reflectance,
             flags: flags.bits(),
             alpha_cutoff,
+            env_spec: self.env_spec,
+            env_diff: self.env_diff,
         }
     }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct CustomStandardMaterialKey {
+    grass: bool,
     normal_map: bool,
     cull_mode: Option<Face>,
     depth_bias: i32,
@@ -191,6 +206,7 @@ pub struct CustomStandardMaterialKey {
 impl From<&CustomStandardMaterial> for CustomStandardMaterialKey {
     fn from(material: &CustomStandardMaterial) -> Self {
         CustomStandardMaterialKey {
+            grass: material.grass,
             normal_map: material.normal_map_texture.is_some(),
             cull_mode: material.cull_mode,
             depth_bias: material.depth_bias as i32,
@@ -205,11 +221,14 @@ impl Material for CustomStandardMaterial {
         _layout: &MeshVertexBufferLayout,
         key: MaterialPipelineKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
-        if key.bind_group_data.normal_map {
-            if let Some(fragment) = descriptor.fragment.as_mut() {
+        if let Some(fragment) = descriptor.fragment.as_mut() {
+            if key.bind_group_data.normal_map {
                 fragment
                     .shader_defs
                     .push("STANDARDMATERIAL_NORMAL_MAP".into());
+            }
+            if key.bind_group_data.grass {
+                fragment.shader_defs.push("GRASS".into());
             }
         }
         descriptor.primitive.cull_mode = key.bind_group_data.cull_mode;
@@ -241,75 +260,126 @@ impl Material for CustomStandardMaterial {
     }
 }
 
+#[derive(Component, Default, Clone, Copy)]
+pub struct EnvSettings {
+    pub env_spec: f32,
+    pub env_diff: f32,
+}
+
 pub fn swap_standard_material(
     mut commands: Commands,
-    mut material_events: EventReader<AssetEvent<StandardMaterial>>,
+    //mut material_events: EventReader<AssetEvent<StandardMaterial>>,
     entites: Query<(Entity, &Handle<StandardMaterial>)>,
     standard_materials: Res<Assets<StandardMaterial>>,
     mut custom_materials: ResMut<Assets<CustomStandardMaterial>>,
     extras: Query<&GltfExtras>,
     parent: Query<&Parent>,
+    texture_assets: Res<TextureAssets>,
 ) {
-    for event in material_events.iter() {
-        let handle = match event {
-            AssetEvent::Created { handle } => handle,
-            _ => continue,
+    let mut converted = Vec::new();
+    for (entity, handle) in entites.iter() {
+        let mat = standard_materials.get(handle).unwrap();
+        converted.push(handle.clone());
+        let mut custom_mat = CustomStandardMaterial {
+            base_color: mat.base_color,
+            base_color_texture: mat.base_color_texture.clone(),
+            emissive: mat.emissive,
+            emissive_texture: mat.emissive_texture.clone(),
+            perceptual_roughness: mat.perceptual_roughness,
+            metallic: mat.metallic,
+            metallic_roughness_texture: mat.metallic_roughness_texture.clone(),
+            reflectance: mat.reflectance,
+            normal_map_texture: mat.normal_map_texture.clone(),
+            flip_normal_map_y: mat.flip_normal_map_y,
+            detail_texture: Some(texture_assets.detail.clone()),
+            double_sided: mat.double_sided,
+            cull_mode: mat.cull_mode,
+            unlit: mat.unlit,
+            fog_enabled: mat.fog_enabled,
+            alpha_mode: mat.alpha_mode,
+            depth_bias: mat.depth_bias,
+            grass: false,
+            env_spec: 1.0,
+            env_diff: 1.0,
         };
-        if let Some(material) = standard_materials.get(handle) {
-            let custom_mat_h = custom_materials.add(CustomStandardMaterial {
-                base_color: material.base_color,
-                base_color_texture: material.base_color_texture.clone(),
-                emissive: material.emissive,
-                emissive_texture: material.emissive_texture.clone(),
-                perceptual_roughness: material.perceptual_roughness,
-                metallic: material.metallic,
-                metallic_roughness_texture: material.metallic_roughness_texture.clone(),
-                reflectance: material.reflectance,
-                normal_map_texture: material.normal_map_texture.clone(),
-                flip_normal_map_y: material.flip_normal_map_y,
-                occlusion_texture: material.occlusion_texture.clone(),
-                double_sided: material.double_sided,
-                cull_mode: material.cull_mode,
-                unlit: material.unlit,
-                fog_enabled: material.fog_enabled,
-                alpha_mode: material.alpha_mode,
-                depth_bias: material.depth_bias,
-            });
-            for (entity, entity_mat_h) in entites.iter() {
-                if entity_mat_h == handle {
-                    if let Ok(parent) = parent.get(entity) {
-                        if let Ok(extras) = extras.get(**parent) {
-                            if let Ok(fields) =
-                                serde_json::from_str::<HashMap<String, String>>(&extras.value)
-                            {
-                                if let Some(alpha) = fields.get("AlphaMode") {
-                                    if let Some(mut mat) = custom_materials.get_mut(&custom_mat_h) {
-                                        let alpha = alpha.to_lowercase();
-                                        // Set on object properties
-                                        // string with ex: AlphaMode add
-                                        if alpha == "premultiplied" {
-                                            mat.alpha_mode = AlphaMode::Premultiplied;
-                                        } else if alpha == "multiply" {
-                                            mat.alpha_mode = AlphaMode::Multiply;
-                                        } else if alpha == "add" {
-                                            mat.alpha_mode = AlphaMode::Add;
-                                        } else if alpha == "blend" {
-                                            mat.alpha_mode = AlphaMode::Blend;
-                                        }
-                                    }
-                                }
-                            }
+
+        if let Ok(parent) = parent.get(entity) {
+            if let Ok(extras) = extras.get(**parent) {
+                if let Ok(fields) = serde_json::from_str::<HashMap<String, String>>(&extras.value) {
+                    if let Some(alpha) = fields.get("AlphaMode") {
+                        let alpha = alpha.to_lowercase();
+                        // Set on object properties
+                        // string with ex: AlphaMode add
+                        if alpha == "premultiplied" {
+                            custom_mat.alpha_mode = AlphaMode::Premultiplied;
+                        } else if alpha == "multiply" {
+                            custom_mat.alpha_mode = AlphaMode::Multiply;
+                        } else if alpha == "add" {
+                            custom_mat.alpha_mode = AlphaMode::Add;
+                        } else if alpha == "blend" {
+                            custom_mat.alpha_mode = AlphaMode::Blend;
                         }
                     }
-                    let mut ecmds = commands.entity(entity);
-                    ecmds.remove::<Handle<StandardMaterial>>();
-                    ecmds.insert(custom_mat_h.clone());
                 }
+            }
+        }
+        let mut ecmds = commands.entity(entity);
+        ecmds.remove::<Handle<StandardMaterial>>();
+        ecmds.insert(custom_materials.add(custom_mat));
+    }
+}
+
+#[derive(Component)]
+pub struct SetGrassMaterial;
+
+pub fn setup_grass_mats(
+    mut commands: Commands,
+    scene_entities: Query<Entity, With<SetGrassMaterial>>,
+    children_query: Query<&Children>,
+    mat_handles: Query<&Handle<CustomStandardMaterial>>,
+    mut custom_materials: ResMut<Assets<CustomStandardMaterial>>,
+) {
+    for entity in scene_entities.iter() {
+        let mut found = false;
+        if let Ok(children) = children_query.get(entity) {
+            all_children(children, &children_query, &mut |entity| {
+                if let Ok(mat_h) = mat_handles.get_component(entity) {
+                    let mut mat = custom_materials.get_mut(mat_h).unwrap();
+                    mat.grass = true;
+                    found = true;
+                }
+            });
+            if found {
+                commands.entity(entity).remove::<SetGrassMaterial>();
             }
         }
     }
 }
 
+pub fn setup_env_settings(
+    mut commands: Commands,
+    scene_entities: Query<(Entity, &EnvSettings)>,
+    children_query: Query<&Children>,
+    mat_handles: Query<&Handle<CustomStandardMaterial>>,
+    mut custom_materials: ResMut<Assets<CustomStandardMaterial>>,
+) {
+    for (entity, env_settings) in scene_entities.iter() {
+        let mut found = false;
+        if let Ok(children) = children_query.get(entity) {
+            all_children(children, &children_query, &mut |entity| {
+                if let Ok(mat_h) = mat_handles.get_component(entity) {
+                    let mut mat = custom_materials.get_mut(mat_h).unwrap();
+                    mat.env_spec = env_settings.env_spec;
+                    mat.env_diff = env_settings.env_diff;
+                    found = true;
+                }
+            });
+            if found {
+                commands.entity(entity).remove::<SetGrassMaterial>();
+            }
+        }
+    }
+}
 /*
 #[derive(Component)]
 pub struct CurtainSetBlend;

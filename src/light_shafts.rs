@@ -21,17 +21,17 @@ impl Plugin for LightShaftsPlugin {
 }
 
 #[derive(Component)]
-pub struct SetLightShaftMaterial;
+pub struct SetLightShaftMaterial(pub LightShaftsMaterial);
 
 pub fn setup_light_shafts(
     mut commands: Commands,
-    scene_entities: Query<Entity, With<SetLightShaftMaterial>>,
+    scene_entities: Query<(Entity, &SetLightShaftMaterial)>,
     children_query: Query<&Children>,
     mat_handles: Query<&Handle<CustomStandardMaterial>>,
     mut custom_materials: ResMut<Assets<CustomStandardMaterial>>,
     mut light_shaft_materials: ResMut<Assets<LightShaftsMaterial>>,
 ) {
-    for entity in scene_entities.iter() {
+    for (entity, light_shaft) in scene_entities.iter() {
         let mut found = false;
         if let Ok(children) = children_query.get(entity) {
             all_children(children, &children_query, &mut |entity| {
@@ -42,7 +42,7 @@ pub fn setup_light_shafts(
                 }
                 commands
                     .entity(entity)
-                    .insert(light_shaft_materials.add(LightShaftsMaterial {}));
+                    .insert(light_shaft_materials.add(light_shaft.0.clone()));
                 commands
                     .entity(entity)
                     .remove::<Handle<CustomStandardMaterial>>();
@@ -76,4 +76,15 @@ impl Material for LightShaftsMaterial {
 
 #[derive(AsBindGroup, Debug, Clone, TypeUuid)]
 #[uuid = "146058e4-91a5-4c30-ad79-6a7ec31fb260"]
-pub struct LightShaftsMaterial {}
+pub struct LightShaftsMaterial {
+    #[uniform(0)]
+    pub color: Vec3,
+    #[uniform(0)]
+    pub shaft: f32,
+    #[uniform(0)]
+    pub dust: f32,
+    #[uniform(0)]
+    pub dust_size: f32,
+    #[uniform(0)]
+    pub dust_qty_sub: f32,
+}

@@ -1,3 +1,6 @@
+Equirectangular ones:
+CompressonatorCLI -fd BC6H -mipsize 256 hilly_terrain_01_puresky_2k.exr hilly_terrain_01_puresky_2k.ktx2
+
 The pisa_*.ktx2 files were generated from https://github.com/KhronosGroup/glTF-Sample-Environments/blob/master/pisa.hdr using the following tools and commands:
 - IBL environment map prefiltering to cubemaps: https://github.com/KhronosGroup/glTF-IBL-Sampler
   - Diffuse: ./cli -inputPath pisa.hdr -outCubeMap pisa_diffuse.ktx2 -distribution Lambertian -cubeMapResolution 32

@@ -180,12 +180,12 @@ def modify_gltf(filepath):
 
 
 def get_name():
-    file_name = bpy.path.basename(bpy.data.filepath)
+    file_name = bpy.path.basename(bpy.data.filepath).replace(".blend", "")
     words = C.collection.name.split()
     if len(words) > 0:
-        return f"{file_name}_{words[0]}"
+        return f"{file_name}_{words[0]}".lower()
     else:
-        return f"{file_name}_{C.collection.name}"
+        return f"{file_name}_{C.collection.name}".lower()
 
 
 def delete_file_if_recent(filepath, time_threshold=30):
@@ -371,13 +371,18 @@ def proc(bake_res, resize_res, auto_smooth, unwrap):
     return disabled_shadows
 
 
-bpy.context.scene.cycles.samples = 64
-bpy.context.scene.cycles.adaptive_threshold = 0.1
-disabled_shadows = disable_shadows()
-proc(**auto_settings())
-modify_gltf(export_gltf(get_name()))
-for obj in disabled_shadows:
-    obj.data.use_shadow = True
+if not bpy.path.basename(bpy.data.filepath).startswith("Exp"):
+    print("----------------------------------------")
+    print("BAKE CANCLED - FILE NOT LABELED WITH Exp")
+    print("----------------------------------------")
+else:
+    bpy.context.scene.cycles.samples = 64
+    bpy.context.scene.cycles.adaptive_threshold = 0.1
+    disabled_shadows = disable_shadows()
+    proc(**auto_settings())
+    modify_gltf(export_gltf(get_name()))
+    for obj in disabled_shadows:
+        obj.data.use_shadow = True
 # delete_intermediate()
 
 # for curtains

@@ -159,6 +159,7 @@ struct PbrInput {
 #ifndef NORMAL_PREPASS
 fn pbr(
     in: PbrInput,
+    direct_light_mult: f32,
 ) -> vec4<f32> {
     var output_color: vec4<f32> = in.material.base_color;
 
@@ -254,7 +255,7 @@ fn pbr(
 
     // Total light
     output_color = vec4<f32>(
-        direct_light + indirect_light + emissive_light,
+        direct_light * direct_light_mult + indirect_light + emissive_light,
         output_color.a
     );
 

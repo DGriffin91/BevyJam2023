@@ -1,7 +1,6 @@
 import os
 import subprocess
 
-
 files = os.listdir()
 
 for file in files:

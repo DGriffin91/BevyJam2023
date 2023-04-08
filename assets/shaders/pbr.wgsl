@@ -14,6 +14,7 @@ struct CustomStandardMaterial {
     alpha_cutoff: f32,
     env_spec: f32,
     env_diff: f32,
+    emit_mult: f32,
 };
 
 #import bevy_pbr::pbr_types
@@ -49,6 +50,7 @@ var normal_map_sampler: sampler;
 //#import bevy_pbr::shadows
 #import "shaders/shadows.wgsl"
 #import bevy_pbr::fog
+#import "shaders/fog.wgsl"
 //#import bevy_pbr::pbr_functions
 #import "shaders/pbr_functions.wgsl"
 
@@ -78,7 +80,9 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
     var perceptual_roughness = material.perceptual_roughness; // Griffin
 // Used for material props
 var use_vertex_colors = false;
+var direct_light_mult = 0.001;
 #ifdef VERTEX_COLORS
+    direct_light_mult = 0.0;
     //output_color = output_color * in.color;
     metallic = in.color.g; // Griffin
     perceptual_roughness = saturate(in.color.r); // Griffin
@@ -118,7 +122,7 @@ var use_vertex_colors = false;
 #ifdef VERTEX_UVS
         if ((material.flags & STANDARD_MATERIAL_FLAGS_EMISSIVE_TEXTURE_BIT) != 0u) {
             var emit_image = textureSampleBicubic(emissive_texture, emissive_sampler, in.uv).rgb;
-            emissive = vec4<f32>(emissive.rgb * pow(emit_image, vec3(1.3)), 1.0);
+            emissive = vec4<f32>(emissive.rgb * pow(emit_image, vec3(1.3)), 1.0) * material.emit_mult;
         }
 #endif
         pbr_input.material.emissive = emissive;
@@ -167,19 +171,14 @@ var use_vertex_colors = false;
 
         pbr_input.flags = mesh.flags;
 #ifdef GRASS
-        output_color *= pbr(pbr_input) * 3.0;
+        output_color *= pbr(pbr_input, direct_light_mult) * 3.0;
 #else
-        output_color = pbr(pbr_input);
+        output_color = pbr(pbr_input, direct_light_mult);
 #endif
 
 
-        // ---------------- noise
-        
-        // TODO make optional, maybe put in post proc shader (with fxaa?)
-        var uv_rand = in.frag_coord.xy / vec2<f32>(view.viewport.zw);
-        uv_rand.y *= random(vec2(uv_rand.y, globals.time));
-        output_color = mix(output_color, output_color + vec4(vec3(random(uv_rand)), 0.0), 0.005);
 
+        // ---------------- detail noise
         output_color = mix(output_color, output_color * vec4(vec3(detail), 1.0), 0.175);
 
 
@@ -189,10 +188,17 @@ var use_vertex_colors = false;
 
     // fog
     if (fog.mode != FOG_MODE_OFF && (material.flags & STANDARD_MATERIAL_FLAGS_FOG_ENABLED_BIT) != 0u) {
-        output_color = apply_fog(output_color, in.world_position.xyz, view.world_position.xyz);
+        output_color = apply_fog_c(output_color, in.world_position.xyz, view.world_position.xyz, 1.0);
     }
 
 
+
+    // ---------------- noise
+    
+    // TODO make optional, maybe put in post proc shader (with fxaa?)
+    var uv_rand = in.frag_coord.xy / vec2<f32>(view.viewport.zw);
+    uv_rand.y *= random(vec2(uv_rand.y, globals.time));
+    output_color = mix(output_color, output_color + vec4(vec3(random(uv_rand)), 0.0), 0.005);
 
 
 #ifdef TONEMAP_IN_SHADER

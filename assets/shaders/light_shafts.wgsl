@@ -9,6 +9,7 @@ struct Material {
     dust: f32,
     dust_size: f32,
     dust_qty: f32,
+    dust_speed: f32,
 }
 
 @group(1) @binding(0)
@@ -35,7 +36,7 @@ fn fragment(in: FragmentInput) -> @location(0) vec4<f32> {
     var fresnel = dot(N, -V);
     fresnel = saturate(fresnel * fresnel * 2.0) + 0.4;
 
-    var dust = noise((in.world_position.xyz * 250.0) / material.dust_size + globals.time * 0.5);
+    var dust = noise((in.world_position.xyz * 250.0) / material.dust_size + globals.time * 0.5 * material.dust_speed);
     let dist_size = saturate(1.0/Z - 0.5 * 1.9 + 0.5);
     dust = (dust - 0.9 - 0.05 * dist_size - material.dust_qty) * 7.0;
     var coarse_noise = (noise(in.world_position.xyz * 8.0 + globals.time * 0.1) - 0.5) * 2.0 + 0.35;

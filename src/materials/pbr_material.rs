@@ -16,6 +16,11 @@ use bevy::{
     utils::HashMap,
 };
 
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub enum MaterialsSet {
+    MaterialSwap,
+}
+
 use crate::assets::TextureAssets;
 use crate::util::all_children;
 

@@ -19,7 +19,11 @@ use character_controller::CharacterController;
 
 use levels::{GameLevel, LevelsPlugin};
 use light_shafts::LightShaftsPlugin;
-use materials::{light_shafts, pbr_material, plant_material};
+use materials::{
+    light_shafts,
+    pbr_material::{self, MaterialsSet},
+    plant_material,
+};
 use pbr_material::{
     setup_env_settings, setup_grass_mats, swap_standard_material, CustomStandardMaterial,
 };
@@ -104,10 +108,14 @@ fn main() {
         .add_plugin(UnitsPlugin)
         .add_plugin(PolylinePlugin)
         .add_plugin(PlayerPlugin)
-        .add_systems((
-            swap_standard_material.run_if(in_state(GameLoading::Loaded)),
-            setup_grass_mats.run_if(in_state(GameLoading::Loaded)),
-            setup_env_settings.run_if(in_state(GameLoading::Loaded)),
-        ))
+        .add_systems(
+            (
+                setup_env_settings.run_if(in_state(GameLoading::Loaded)),
+                swap_standard_material.run_if(in_state(GameLoading::Loaded)),
+                setup_grass_mats.run_if(in_state(GameLoading::Loaded)),
+            )
+                .chain()
+                .in_set(MaterialsSet::MaterialSwap),
+        )
         .run();
 }

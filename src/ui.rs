@@ -1,8 +1,8 @@
 use bevy::{prelude::*, window::CursorGrabMode};
 use bevy_egui::*;
-use bevy_fps_controller::controller::FpsController;
+use bevy_fps_controller::controller::{FpsController, RenderPlayer};
 
-use crate::{levels::GameLevel, GameLoading};
+use crate::{levels::GameLevel, GameLoading, Health};
 
 pub struct GameUiPlugin;
 impl Plugin for GameUiPlugin {
@@ -17,7 +17,13 @@ pub fn ui_system(
     mut next_state: ResMut<NextState<GameLevel>>,
     mut fps_controller: Query<&mut FpsController>,
     windows: Query<&Window>,
+    health: Query<&Health, With<RenderPlayer>>,
 ) {
+    egui::Window::new("Hello2").show(contexts.ctx_mut(), |ui| {
+        for health in &health {
+            ui.label(format!("health {}", health.0));
+        }
+    });
     let window = windows.single();
     if window.cursor.grab_mode == CursorGrabMode::Locked
         && !contexts.ctx_mut().wants_pointer_input()

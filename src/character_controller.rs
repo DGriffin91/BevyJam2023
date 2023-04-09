@@ -125,10 +125,10 @@ fn setup(
             specular_map: asset_server.load("environment_maps/pisa_specular_rgb9e5_zstd.ktx2"),
         })
         .insert(Fxaa::default())
-        .insert(ShootableByUnit)
-        .insert(Health(1.0))
         .insert(polyline)
-        .insert(LogicalPlayerEntity(logical_player_entity));
+        .insert(LogicalPlayerEntity(logical_player_entity))
+        .insert(ShootableByUnit)
+        .insert(Health(1.0));
 
     commands.spawn(
         TextBundle::from_section(

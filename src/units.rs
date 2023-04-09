@@ -1,13 +1,14 @@
 use std::time::Duration;
 
+use bevy::ecs::entity;
 use bevy::{math::vec3, prelude::*};
-use bevy_rapier3d::prelude::Collider;
+use bevy_rapier3d::prelude::{Collider, QueryFilter, RapierContext};
 use rand::distributions::WeightedIndex;
 use rand::prelude::Distribution;
 use rand::Rng;
 
 use crate::assets::PropAssets;
-use crate::character_controller::ShootableByUnit;
+use crate::character_controller::{LogicalPlayerEntity, ShootableByUnit};
 use crate::player::Projectile;
 use crate::util::all_children;
 use crate::Health;
@@ -15,15 +16,20 @@ use crate::{assets::UnitAssets, GameLoading, GameRng};
 pub struct UnitsPlugin;
 impl Plugin for UnitsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems((
-            play_animations.run_if(in_state(GameLoading::Loaded)),
-            roam.run_if(in_state(GameLoading::Loaded)),
-            setup_anim_player_refs.run_if(in_state(GameLoading::Loaded)),
-            face_dest_pos.run_if(in_state(GameLoading::Loaded)),
-            move_to_dest.run_if(in_state(GameLoading::Loaded)),
-            target_shootables.run_if(in_state(GameLoading::Loaded)),
-            shoot_stuff.run_if(in_state(GameLoading::Loaded)),
-        ))
+        app.add_systems(
+            (
+                play_animations,
+                roam,
+                setup_anim_player_refs,
+                face_dest_pos,
+                move_to_dest,
+                target_shootables,
+                shoot_stuff,
+                blowup,
+                damage_player,
+            )
+                .distributive_run_if(in_state(GameLoading::Loaded)),
+        )
         .add_system(spawn_units.in_schedule(OnEnter(GameLoading::Loaded)));
     }
 }
@@ -75,7 +81,7 @@ impl UnitsStates {
 
     pub fn rng_pick_attacking(rng: &mut GameRng) -> UnitsStates {
         let items = [
-            (UnitsStates::Walk, 50),
+            (UnitsStates::Walk, 40),
             (UnitsStates::Bob, 7),
             (UnitsStates::Fire, 100),
             (UnitsStates::WalkLazy, 20),
@@ -135,7 +141,6 @@ pub struct UnitData {
     pub arrived: bool,
     pub init: bool, // for some reason they disappear if they don't walk first
     pub range: f32,
-    pub health: f32,
     pub attack_damage: f32,
     pub fire_cooldown: f32,
     pub fire_rate: f32,
@@ -226,13 +231,17 @@ fn spawn_units(mut commands: Commands, unit_assets: Res<UnitAssets>, mut rng: Re
                     init: false,
                     target_to_shoot: None,
                     target_to_apply_damage: None,
-                    range: 10.0,
-                    health: 1.0,
-                    attack_damage: 0.02,
+                    range: 20.0,
+                    attack_damage: 0.01,
                     fire_cooldown: 1.0,
                     fire_rate: 2.0,
                 })
-                .insert(Collider::ball(1.0));
+                .insert(Collider::capsule(
+                    vec3(0.0, 0.0, 0.0),
+                    vec3(0.0, 1.6, 0.0),
+                    0.4,
+                ))
+                .insert(Health(1.0));
         }
     }
 }
@@ -259,7 +268,12 @@ fn play_animations(
                     if current_clip != clip {
                         true
                     } else {
-                        false
+                        if unit.current_state.does_loop() {
+                            //if the animation loops, don't restart it
+                            false
+                        } else {
+                            true
+                        }
                     }
                 } else {
                     true
@@ -317,57 +331,84 @@ pub fn move_to_dest(mut unit_entities: Query<(&mut Transform, &mut UnitData)>) {
 }
 
 pub fn target_shootables(
-    mut unit_entities: Query<(&Transform, &mut UnitData)>,
-    shootables: Query<(Entity, &Transform), With<ShootableByUnit>>,
+    mut unit_entities: Query<(Entity, &GlobalTransform, &mut UnitData)>,
+    shootables: Query<
+        (Entity, &GlobalTransform, Option<&LogicalPlayerEntity>),
+        With<ShootableByUnit>,
+    >,
+    rapier_context: Res<RapierContext>,
 ) {
-    for (trans, mut unit) in &mut unit_entities {
+    for (unit_entity, unit_trans, mut unit) in &mut unit_entities {
+        let unit_trans = unit_trans.compute_transform();
         let mut closest_entity = None;
         let mut closest_pos = vec3(f32::INFINITY, f32::INFINITY, f32::INFINITY);
         let mut closest_dist = f32::INFINITY;
-        for (shootable, shootable_trans) in &shootables {
-            let this_dist = shootable_trans.translation.distance(trans.translation);
+        let mut logical_player = None;
+        for (shootable, shootable_trans, logical_player_shootable) in &shootables {
+            let shootable_trans = shootable_trans.compute_transform();
+            let this_dist = shootable_trans.translation.distance(unit_trans.translation);
             if this_dist < closest_dist {
                 closest_dist = this_dist;
                 closest_pos = shootable_trans.translation;
                 closest_entity = Some(shootable.clone());
+                logical_player = logical_player_shootable;
             }
         }
+        unit.target_to_shoot = None;
+        unit.target_to_apply_damage = None;
         if let Some(closest_entity) = closest_entity {
             if closest_dist < unit.range {
-                unit.target_to_shoot = Some(closest_pos); // + Vec3::Y * 0.3
-                unit.target_to_apply_damage = Some(closest_entity);
-            } else {
-                unit.target_to_shoot = None;
-                unit.target_to_apply_damage = None;
+                let origin = unit_trans.translation + Vec3::Y * 1.65; // head level
+                let hit = rapier_context.cast_ray(
+                    origin,
+                    (closest_pos - origin).normalize(),
+                    f32::MAX,
+                    false,
+                    QueryFilter::default()
+                        .exclude_collider(unit_entity)
+                        .exclude_sensors(),
+                );
+                if let Some(hit) = hit {
+                    if hit.0 == closest_entity {
+                        unit.target_to_shoot = Some(closest_pos);
+                        unit.target_to_apply_damage = Some(closest_entity);
+                    } else if let Some(logical_player) = logical_player {
+                        if hit.0 == logical_player.0 {
+                            unit.target_to_shoot = Some(closest_pos);
+                            unit.target_to_apply_damage = Some(closest_entity);
+                        }
+                    }
+                }
             }
-        } else {
-            unit.target_to_shoot = None;
-            unit.target_to_apply_damage = None;
         }
     }
 }
 
 pub fn shoot_stuff(
     mut commands: Commands,
-    mut unit_entities: Query<(&Transform, &mut UnitData)>,
-    mut health: Query<(&Transform, &mut Health)>,
+    mut unit_entities: Query<(Entity, &GlobalTransform, &mut UnitData)>,
+    mut target: Query<&GlobalTransform>,
     time: Res<Time>,
     props: Res<PropAssets>,
 ) {
-    for (trans, mut unit) in &mut unit_entities {
+    for (unit_entity, unit_trans, mut unit) in &mut unit_entities {
         unit.fire_cooldown -= unit.fire_rate * time.delta_seconds();
         if unit.fire_cooldown > 0.0 {
             continue;
         }
+        let unit_trans = unit_trans.compute_transform();
         if let UnitsStates::Fire = unit.current_state {
             if let Some(target_to_apply_damage) = unit.target_to_apply_damage {
                 if let Some(target_to_shoot) = unit.target_to_shoot {
-                    if let Ok((player_trans, mut health)) = health.get_mut(target_to_apply_damage) {
+                    if let Ok(player_trans) = target.get_mut(target_to_apply_damage) {
                         unit.fire_cooldown = 1.0; //reset cooldown
-                        health.0 -= unit.attack_damage * time.delta_seconds();
-                        let start_pos = trans.translation + Vec3::Y * 1.65 + trans.right() * 0.2;
+
+                        // head level
+                        let start_pos =
+                            unit_trans.translation + Vec3::Y * 1.65 + unit_trans.right() * 0.2;
+                        // XD (so we don't come directly at players camera)
                         let target =
-                            target_to_shoot - vec3(0.01, 0.1, 0.01) + player_trans.left() * 0.01; // XD;
+                            target_to_shoot - vec3(0.01, 0.1, 0.01) + player_trans.left() * 0.01;
 
                         commands
                             .spawn(SceneBundle {
@@ -380,9 +421,65 @@ pub fn shoot_stuff(
                                 speed: 100.0,
                                 max_dist: 1000.0,
                                 dist_trav: 0.0,
-                            });
+                            })
+                            .insert(DamagePlayer(unit.attack_damage));
                     }
                 }
+            }
+        }
+    }
+}
+
+pub fn blowup(
+    mut commands: Commands,
+    mut unit_entities: Query<(Entity, &GlobalTransform, &mut UnitData, &Health)>,
+    mut rng: ResMut<GameRng>,
+    props: Res<PropAssets>,
+) {
+    for (entitiy, trans, _unit, health) in &mut unit_entities {
+        if health.0 <= 0.0 {
+            commands.entity(entitiy).despawn_recursive();
+            for _ in 0..16 {
+                let origin = trans.translation() + trans.up();
+                commands
+                    .spawn(SceneBundle {
+                        scene: props.projectile_lite_red.clone(),
+                        transform: Transform::from_translation(origin).looking_at(
+                            origin
+                                + vec3(
+                                    rng.gen_range(-1.0..1.0),
+                                    rng.gen_range(0.4..1.0),
+                                    rng.gen_range(-1.0..1.0),
+                                ),
+                            Vec3::Y,
+                        ),
+                        ..default()
+                    })
+                    .insert(Projectile {
+                        speed: 35.0,
+                        max_dist: 20.0,
+                        dist_trav: 0.0,
+                    });
+            }
+        }
+    }
+}
+
+#[derive(Component)]
+struct DamagePlayer(f32);
+
+fn damage_player(
+    mut player: Query<(&GlobalTransform, &LogicalPlayerEntity, &mut Health)>,
+    mut projectiles: Query<(&GlobalTransform, &mut Projectile, &DamagePlayer)>,
+) {
+    for (player_trans, _, mut health) in &mut player {
+        for (proj_trans, _proj, damage) in &mut projectiles {
+            if player_trans
+                .translation()
+                .distance(proj_trans.translation())
+                < 1.0
+            {
+                health.0 -= damage.0;
             }
         }
     }

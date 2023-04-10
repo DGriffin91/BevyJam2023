@@ -2,7 +2,7 @@ use std::f32::consts::TAU;
 
 use bevy::{
     core_pipeline::{fxaa::Fxaa, tonemapping::Tonemapping},
-    math::{vec2, Vec3Swizzles},
+    math::vec2,
     prelude::*,
     window::CursorGrabMode,
 };
@@ -12,7 +12,10 @@ use bevy_rapier3d::prelude::*;
 
 use bevy_fps_controller::controller::*;
 
-use crate::{ui::ui_system, Health};
+use crate::{
+    ui::{ui_system, SettingClock},
+    Health,
+};
 
 pub const SPAWN_POINT: Vec3 = Vec3::new(0.0, 0.0, 0.0);
 
@@ -21,7 +24,13 @@ impl Plugin for CharacterController {
     fn build(&self, app: &mut App) {
         app.add_plugin(FpsControllerPlugin)
             .add_startup_system(setup)
-            .add_systems((manage_cursor, display_text, respawn).after(ui_system));
+            .add_systems(
+                (
+                    manage_cursor,
+                    //display_text,
+                )
+                    .after(ui_system),
+            );
     }
 }
 
@@ -30,6 +39,9 @@ pub struct ShootableByUnit;
 
 #[derive(Component)]
 pub struct LogicalPlayerEntity(pub Entity);
+
+pub const GRAVITY: f32 = 23.0;
+pub const JUMP_SPEED: f32 = 12.0;
 
 fn setup(
     mut commands: Commands,
@@ -90,7 +102,11 @@ fn setup(
                 upright_height: 1.7,
                 crouch_height: 1.0,
                 walk_speed: 6.0,
-                run_speed: 12.0,
+                run_speed: 16.0,
+                jump_speed: 0.0,
+                forward_speed: 50.0,
+                air_speed_cap: 7.0,
+                gravity: 0.0,
                 ..default()
             },
         ))
@@ -151,17 +167,6 @@ fn setup(
     );
 }
 
-fn respawn(mut query: Query<(&mut Transform, &mut Velocity), With<FpsController>>) {
-    for (mut transform, mut velocity) in &mut query {
-        if transform.translation.y > -50.0 {
-            continue;
-        }
-
-        velocity.linvel = Vec3::ZERO;
-        transform.translation = SPAWN_POINT;
-    }
-}
-
 fn manage_cursor(
     keys: Res<Input<KeyCode>>,
     mut fps_controller: Query<&mut FpsController>,
@@ -169,8 +174,9 @@ fn manage_cursor(
     //#[cfg(debug_assertions)] editor_state: Res<EditorState>,
     mut windows: Query<&mut Window>,
     mut contexts: EguiContexts,
+    setting_clock: Res<SettingClock>,
 ) {
-    if contexts.ctx_mut().wants_pointer_input() {
+    if contexts.ctx_mut().wants_pointer_input() || setting_clock.0 {
         return;
     }
     let mut window = windows.single_mut();
@@ -217,25 +223,5 @@ fn manage_cursor(
     if cursor_locked {
         let (w, h) = (window.width(), window.height());
         window.set_cursor_position(Some(vec2(w / 2.0, h / 2.0)));
-    }
-}
-
-fn display_text(
-    mut controller_query: Query<(&Transform, &Velocity)>,
-    mut text_query: Query<&mut Text>,
-) {
-    for (transform, velocity) in &mut controller_query {
-        for mut text in &mut text_query {
-            text.sections[0].value = format!(
-                "vel: {:.2}, {:.2}, {:.2}\npos: {:.2}, {:.2}, {:.2}\nspd: {:.2}",
-                velocity.linvel.x,
-                velocity.linvel.y,
-                velocity.linvel.z,
-                transform.translation.x,
-                transform.translation.y,
-                transform.translation.z,
-                velocity.linvel.xz().length()
-            );
-        }
     }
 }

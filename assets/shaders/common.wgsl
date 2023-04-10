@@ -48,3 +48,8 @@ fn noise(x: vec3<f32>) -> f32 {
                    mix( hash(i+vec3(0.0,1.0,1.0)), 
                         hash(i+vec3(1.0,1.0,1.0)),f.x),f.y),f.z);
 }
+
+fn saturation(color: vec3<f32>, saturationAmount: f32) -> vec3<f32> {
+    let luma = dot(color, vec3<f32>(0.2126, 0.7152, 0.0722));
+    return mix(vec3(luma), color, vec3(saturationAmount));
+}

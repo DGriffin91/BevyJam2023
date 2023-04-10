@@ -109,7 +109,7 @@ def transfer_material_props_to_verts(obj):
                 metallic = principled_bsdf.inputs["Metallic"].default_value
                 set_vertex_colors(obj, "Attribute", idx, (roughness_value, metallic))
 
-
+# CompressonatorCLI -fd BC6H -mipsize 256
 def convert_exr_to_ktx2(input_file, output_file):
     cmd = [
         "CompressonatorCLI ",

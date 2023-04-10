@@ -1,11 +1,15 @@
 use crate::{
     assets::PropAssets,
     character_controller::LogicalPlayerEntity,
+    levels::GameLevel,
     materials::pbr_material::{EnvSettings, MaterialsSet},
-    GameLoading, Health,
+    ui::ui_system,
+    units::UnitData,
+    GameLoading, Health, LevelsStarted,
 };
 use bevy::{math::vec3, prelude::*};
 use bevy_egui::EguiContexts;
+use bevy_fps_controller::controller::{FpsController, RenderPlayer};
 use bevy_rapier3d::prelude::*;
 
 pub struct PlayerPlugin;
@@ -13,13 +17,17 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
-                cast_ray.run_if(in_state(GameLoading::Loaded)),
-                add_gun.run_if(in_state(GameLoading::Loaded)),
-                add_crosshair.run_if(in_state(GameLoading::Loaded)),
-                progress_projectiles.run_if(in_state(GameLoading::Loaded)),
+                respawn,
+                player_shoot,
+                add_gun,
+                add_crosshair,
+                progress_projectiles,
+                gun_visibility,
             )
                 .chain()
-                .before(MaterialsSet::MaterialSwap),
+                .distributive_run_if(in_state(GameLoading::Loaded))
+                .before(MaterialsSet::MaterialSwap)
+                .after(ui_system),
         );
     }
 }
@@ -29,6 +37,9 @@ pub struct GunRef(pub Entity);
 
 #[derive(Component)]
 pub struct GunFlash;
+
+#[derive(Component)]
+pub struct GunModel;
 
 #[derive(Component)]
 pub struct PlayerGun {
@@ -55,6 +66,7 @@ fn add_gun(
                 transform: trans,
                 ..default()
             })
+            .insert(GunModel)
             .id();
         let gun = commands
             .spawn(SceneBundle {
@@ -63,6 +75,7 @@ fn add_gun(
                 ..default()
             })
             .insert(env_settings)
+            .insert(GunModel)
             .id();
         let flash = commands
             .spawn(SceneBundle {
@@ -85,7 +98,7 @@ fn add_gun(
             .add_child(gun_emit)
             .add_child(flash)
             .insert(PlayerGun {
-                attack_damage: 0.4,
+                attack_damage: 0.3,
                 fire_cooldown: 1.0,
                 fire_rate: 10.0,
             });
@@ -116,7 +129,7 @@ fn add_crosshair(
     }
 }
 
-fn cast_ray(
+fn player_shoot(
     mut commands: Commands,
     rapier_context: Res<RapierContext>,
     mut player: Query<(
@@ -131,21 +144,25 @@ fn cast_ray(
     mut gun_flash: Query<&mut Visibility, With<GunFlash>>,
     mut healths: Query<&mut Health>,
     time: Res<Time>,
+    state: Res<State<GameLevel>>,
 ) {
     // We will color in read the colliders hovered by the mouse.
     for (entity, camera_transform, logical_player_entity, mut gun) in &mut player {
         gun.fire_cooldown -= gun.fire_rate * time.delta_seconds();
-        for mut flash in &mut gun_flash {
-            *flash = Visibility::Visible;
-        }
+
         if !buttons.pressed(MouseButton::Left)
             || contexts.ctx_mut().wants_pointer_input()
             || gun.fire_cooldown > 0.0
+            || !state.0.show_gun()
         {
             for mut flash in &mut gun_flash {
                 *flash = Visibility::Hidden;
             }
             continue;
+        } else {
+            for mut flash in &mut gun_flash {
+                *flash = Visibility::Visible;
+            }
         }
         gun.fire_cooldown = 1.0;
         // First, compute a ray from the mouse position.
@@ -164,7 +181,7 @@ fn cast_ray(
                 ..default()
             })
             .insert(Projectile {
-                speed: 150.0,
+                speed: 250.0,
                 max_dist: 1000.0,
                 dist_trav: 0.0,
             })
@@ -185,12 +202,11 @@ fn cast_ray(
                 .exclude_sensors(),
         );
 
-        if let Some((hit_entity, _toi)) = hit {
+        if let Some((hit_entity, toi)) = hit {
             if commands.get_entity(hit_entity).is_some() {
-                dbg!(hit_entity);
                 if let Ok(mut health) = healths.get_mut(hit_entity) {
-                    dbg!(&health.0);
-                    health.0 -= gun.attack_damage;
+                    let dmg_mult = 1.0 / (toi - 35.0).clamp(1.0, 100.0).powf(0.5);
+                    health.0 -= gun.attack_damage * dmg_mult;
                 }
             }
         }
@@ -216,5 +232,49 @@ fn progress_projectiles(
         let dist = time.delta_seconds() * projectile.speed;
         trans.translation = trans.translation + trans.forward() * dist;
         projectile.dist_trav += dist;
+    }
+}
+
+fn respawn(
+    mut commands: Commands,
+    mut query: Query<(&mut Transform, &mut Velocity, &mut FpsController)>,
+    mut health: Query<&mut Health, With<RenderPlayer>>,
+    state: Res<State<GameLevel>>,
+    mut next_state: ResMut<NextState<GameLevel>>,
+    units: Query<Entity, With<UnitData>>,
+    levels_started: Res<LevelsStarted>,
+) {
+    if !levels_started.0 {
+        return;
+    }
+    if let Some(mut health) = health.iter_mut().next() {
+        if let Some((mut transform, mut velocity, mut fps_controller)) = query.iter_mut().next() {
+            if transform.translation.y < -500.0 || health.0 <= 0.0 {
+                fps_controller.gravity = 0.0;
+                health.0 = 1.0;
+                next_state.set(state.0.clone());
+
+                velocity.linvel = Vec3::ZERO;
+                transform.translation = state.0.spawn_pos();
+                for unit in &units {
+                    if commands.get_entity(unit).is_some() {
+                        commands.entity(unit).despawn_recursive();
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn gun_visibility(
+    mut gun_models: Query<&mut Visibility, With<GunModel>>,
+    level: Res<State<GameLevel>>,
+) {
+    for mut gun_vis in &mut gun_models {
+        if level.0.show_gun() {
+            *gun_vis = Visibility::Visible
+        } else {
+            *gun_vis = Visibility::Hidden
+        }
     }
 }

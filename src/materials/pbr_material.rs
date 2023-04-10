@@ -60,6 +60,7 @@ pub struct CustomStandardMaterial {
     pub alpha_mode: AlphaMode,
     pub depth_bias: f32,
     pub grass: bool,
+    pub grass2: bool,
     pub env_spec: f32,
     pub env_diff: f32,
     pub emit_mult: f32,
@@ -86,6 +87,7 @@ impl Default for CustomStandardMaterial {
             alpha_mode: AlphaMode::Opaque,
             depth_bias: 0.0,
             grass: false,
+            grass2: false,
             env_diff: 1.0,
             env_spec: 1.0,
             emit_mult: 1.0,
@@ -206,6 +208,7 @@ impl AsBindGroupShaderType<CustomStandardMaterialUniform> for CustomStandardMate
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct CustomStandardMaterialKey {
     grass: bool,
+    grass2: bool,
     normal_map: bool,
     cull_mode: Option<Face>,
     depth_bias: i32,
@@ -215,6 +218,7 @@ impl From<&CustomStandardMaterial> for CustomStandardMaterialKey {
     fn from(material: &CustomStandardMaterial) -> Self {
         CustomStandardMaterialKey {
             grass: material.grass,
+            grass2: material.grass2,
             normal_map: material.normal_map_texture.is_some(),
             cull_mode: material.cull_mode,
             depth_bias: material.depth_bias as i32,
@@ -237,6 +241,9 @@ impl Material for CustomStandardMaterial {
             }
             if key.bind_group_data.grass {
                 fragment.shader_defs.push("GRASS".into());
+            }
+            if key.bind_group_data.grass2 {
+                fragment.shader_defs.push("GRASS2".into());
             }
         }
         descriptor.primitive.cull_mode = key.bind_group_data.cull_mode;
@@ -308,6 +315,7 @@ pub fn swap_standard_material(
             alpha_mode: mat.alpha_mode,
             depth_bias: mat.depth_bias,
             grass: false,
+            grass2: false,
             env_spec: 1.0,
             env_diff: 1.0,
             emit_mult: 1.0,
@@ -341,10 +349,13 @@ pub fn swap_standard_material(
 
 #[derive(Component)]
 pub struct SetGrassMaterial;
+#[derive(Component)]
+pub struct SetGrassMaterial2;
 
 pub fn setup_grass_mats(
     mut commands: Commands,
     scene_entities: Query<Entity, With<SetGrassMaterial>>,
+    scene_entities2: Query<Entity, (With<SetGrassMaterial2>, Without<SetGrassMaterial>)>,
     children_query: Query<&Children>,
     mat_handles: Query<&Handle<CustomStandardMaterial>>,
     mut custom_materials: ResMut<Assets<CustomStandardMaterial>>,
@@ -361,6 +372,21 @@ pub fn setup_grass_mats(
             });
             if found {
                 commands.entity(entity).remove::<SetGrassMaterial>();
+            }
+        }
+    }
+    for entity in scene_entities2.iter() {
+        let mut found = false;
+        if let Ok(children) = children_query.get(entity) {
+            all_children(children, &children_query, &mut |entity| {
+                if let Ok(mat_h) = mat_handles.get_component(entity) {
+                    let mut mat = custom_materials.get_mut(mat_h).unwrap();
+                    mat.grass2 = true;
+                    found = true;
+                }
+            });
+            if found {
+                commands.entity(entity).remove::<SetGrassMaterial2>();
             }
         }
     }

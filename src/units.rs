@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use bevy::ecs::entity;
 use bevy::{math::vec3, prelude::*};
 use bevy_rapier3d::prelude::{Collider, QueryFilter, RapierContext};
 use rand::distributions::WeightedIndex;
@@ -18,6 +17,7 @@ impl Plugin for UnitsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             (
+                spawn_enemies,
                 play_animations,
                 roam,
                 setup_anim_player_refs,
@@ -30,7 +30,8 @@ impl Plugin for UnitsPlugin {
             )
                 .distributive_run_if(in_state(GameLoading::Loaded)),
         )
-        .add_system(spawn_units.in_schedule(OnEnter(GameLoading::Loaded)));
+        .init_resource::<Difficulty>();
+        //.add_system(spawn_some_units.in_schedule(OnEnter(GameLoading::Loaded)));
     }
 }
 
@@ -141,7 +142,6 @@ pub struct UnitData {
     pub arrived: bool,
     pub init: bool, // for some reason they disappear if they don't walk first
     pub range: f32,
-    pub attack_damage: f32,
     pub fire_cooldown: f32,
     pub fire_rate: f32,
 }
@@ -165,7 +165,7 @@ fn roam(time: Res<Time>, mut units: Query<&mut UnitData>, mut rng: ResMut<GameRn
             };
             match unit.current_state {
                 UnitsStates::Walk => {
-                    unit.state_timer = rng.gen_range(2.0..3.0);
+                    unit.state_timer = rng.gen_range(1.0..2.0);
                     let r = unit.max_radius;
                     unit.dest = vec3(
                         unit.spawn.x + rng.gen_range(-r..r),
@@ -175,23 +175,23 @@ fn roam(time: Res<Time>, mut units: Query<&mut UnitData>, mut rng: ResMut<GameRn
                     unit.arrived = false;
                 }
                 UnitsStates::Idle => {
-                    unit.state_timer = rng.gen_range(2.0..3.0);
+                    unit.state_timer = rng.gen_range(1.0..2.0);
                     unit.arrived = true;
                 }
                 UnitsStates::Bob => {
-                    unit.state_timer = rng.gen_range(2.0..3.0);
+                    unit.state_timer = rng.gen_range(1.0..2.0);
                     unit.arrived = true;
                 }
                 UnitsStates::Bonk => {
-                    unit.state_timer = rng.gen_range(3.0..4.0);
+                    unit.state_timer = rng.gen_range(2.0..3.0);
                     unit.arrived = true;
                 }
                 UnitsStates::Fire => {
-                    unit.state_timer = rng.gen_range(2.0..3.0);
+                    unit.state_timer = rng.gen_range(1.0..2.0);
                     unit.arrived = true;
                 }
                 UnitsStates::WalkLazy => {
-                    unit.state_timer = rng.gen_range(2.0..3.0);
+                    unit.state_timer = rng.gen_range(1.0..2.0);
                     let r = unit.max_radius;
                     unit.dest = vec3(
                         unit.spawn.x + rng.gen_range(-r..r),
@@ -201,7 +201,7 @@ fn roam(time: Res<Time>, mut units: Query<&mut UnitData>, mut rng: ResMut<GameRn
                     unit.arrived = false;
                 }
                 UnitsStates::Stop => {
-                    unit.state_timer = rng.gen_range(2.0..3.0);
+                    unit.state_timer = rng.gen_range(1.0..2.0);
                     unit.arrived = true;
                 }
             }
@@ -209,9 +209,87 @@ fn roam(time: Res<Time>, mut units: Query<&mut UnitData>, mut rng: ResMut<GameRn
     }
 }
 
-fn spawn_units(mut commands: Commands, unit_assets: Res<UnitAssets>, mut rng: ResMut<GameRng>) {
-    for x in 0..8 {
-        for z in 0..8 {
+#[derive(Component)]
+pub struct EnemySpawns;
+
+#[derive(Resource, Default, PartialEq, Eq)]
+pub enum Difficulty {
+    #[default]
+    Easy,
+    Medium,
+    Hard,
+    Ultra,
+}
+
+impl Difficulty {
+    fn bot_dmg(&self) -> f32 {
+        match self {
+            Difficulty::Easy => 0.006,
+            Difficulty::Medium => 0.012,
+            Difficulty::Hard => 0.024,
+            Difficulty::Ultra => 0.048,
+        }
+    }
+}
+
+pub fn spawn_enemies(
+    mut commands: Commands,
+    scene_entities: Query<Entity, With<EnemySpawns>>,
+    children_query: Query<&Children>,
+    transforms: Query<(&Transform, &Name)>,
+    unit_assets: Res<UnitAssets>,
+    mut rng: ResMut<GameRng>,
+) {
+    for entity in scene_entities.iter() {
+        if let Ok(children) = children_query.get(entity) {
+            all_children(children, &children_query, &mut |entity| {
+                if let Ok((trans, name)) = transforms.get(entity) {
+                    if !name.to_lowercase().contains("enemyspawn") {
+                        return; //return from closure
+                    }
+                    let spawn_pos = trans.translation + Vec3::Y * 0.05;
+                    commands
+                        .spawn(SceneBundle {
+                            scene: unit_assets.unit1.clone(),
+                            transform: Transform::from_translation(spawn_pos),
+                            ..default()
+                        })
+                        .insert(UnitData {
+                            spawn: spawn_pos,
+                            max_radius: 2.0,
+                            dest: spawn_pos,
+                            current_state: UnitsStates::Stop,
+                            state_timer: rng.gen_range(5.5..6.5),
+                            current_clip: None,
+                            speed: rng.gen_range(0.8..2.5),
+                            arrived: false,
+                            init: false,
+                            target_to_shoot: None,
+                            target_to_apply_damage: None,
+                            range: 43.0,
+                            fire_cooldown: 1.0,
+                            fire_rate: 4.0,
+                        })
+                        .insert(Collider::capsule(
+                            vec3(0.0, 0.0, 0.0),
+                            vec3(0.0, 1.6, 0.0),
+                            0.4,
+                        ))
+                        .insert(Health(1.0));
+                }
+            });
+            commands.entity(entity).remove::<EnemySpawns>();
+        }
+    }
+}
+
+fn _spawn_some_units(
+    mut commands: Commands,
+    unit_assets: Res<UnitAssets>,
+    mut rng: ResMut<GameRng>,
+) {
+    for x in 0..0 {
+        for z in 0..0 {
             let spawn_pos = vec3(x as f32 * 4.0 - 20.0, 0.0, z as f32 * 4.0 - 10.0);
             commands
                 .spawn(SceneBundle {
@@ -224,17 +302,16 @@ fn spawn_units(mut commands: Commands, unit_assets: Res<UnitAssets>, mut rng: Re
                     max_radius: 2.0,
                     dest: spawn_pos,
                     current_state: UnitsStates::Stop,
-                    state_timer: rng.gen_range(5.5..6.5),
+                    state_timer: rng.gen_range(2.5..4.5),
                     current_clip: None,
                     speed: rng.gen_range(0.8..2.5),
                     arrived: false,
                     init: false,
                     target_to_shoot: None,
                     target_to_apply_damage: None,
-                    range: 20.0,
-                    attack_damage: 0.01,
+                    range: 50.0,
                     fire_cooldown: 1.0,
-                    fire_rate: 2.0,
+                    fire_rate: 1.0,
                 })
                 .insert(Collider::capsule(
                     vec3(0.0, 0.0, 0.0),
@@ -390,8 +467,9 @@ pub fn shoot_stuff(
     mut target: Query<&GlobalTransform>,
     time: Res<Time>,
     props: Res<PropAssets>,
+    difficulty: Res<Difficulty>,
 ) {
-    for (unit_entity, unit_trans, mut unit) in &mut unit_entities {
+    for (_unit_entity, unit_trans, mut unit) in &mut unit_entities {
         unit.fire_cooldown -= unit.fire_rate * time.delta_seconds();
         if unit.fire_cooldown > 0.0 {
             continue;
@@ -422,7 +500,7 @@ pub fn shoot_stuff(
                                 max_dist: 1000.0,
                                 dist_trav: 0.0,
                             })
-                            .insert(DamagePlayer(unit.attack_damage));
+                            .insert(DamagePlayer(difficulty.bot_dmg()));
                     }
                 }
             }
@@ -436,9 +514,11 @@ pub fn blowup(
     mut rng: ResMut<GameRng>,
     props: Res<PropAssets>,
 ) {
-    for (entitiy, trans, _unit, health) in &mut unit_entities {
+    for (entity, trans, _unit, health) in &mut unit_entities {
         if health.0 <= 0.0 {
-            commands.entity(entitiy).despawn_recursive();
+            if commands.get_entity(entity).is_some() {
+                commands.entity(entity).despawn_recursive();
+            }
             for _ in 0..16 {
                 let origin = trans.translation() + trans.up();
                 commands

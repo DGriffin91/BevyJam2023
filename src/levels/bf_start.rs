@@ -1,22 +1,18 @@
-use bevy::{
-    math::{vec2, vec3},
-    prelude::*,
-};
+use bevy::{math::vec2, prelude::*};
 use bevy_fps_controller::controller::FpsController;
 
 use crate::{
     assets::{LevelAssets, TextureAssets},
-    light_shafts::{LightShaftsMaterial, SetLightShaftMaterial},
-    materials::skybox::SkyBoxMaterial,
+    materials::{pbr_material::SetGrassMaterial2, skybox::SkyBoxMaterial},
     pbr_material::EnvSettings,
     physics::AddTrimeshPhysics,
     ui::TextFeed,
 };
 
 #[derive(Component)]
-pub struct CopierLevel;
+pub struct BFStartLevel;
 
-pub fn despawn_copier(mut commands: Commands, query: Query<Entity, With<CopierLevel>>) {
+pub fn despawn_bfstart(mut commands: Commands, query: Query<Entity, With<BFStartLevel>>) {
     for entity in &query {
         if commands.get_entity(entity).is_some() {
             commands.entity(entity).despawn_recursive();
@@ -24,7 +20,7 @@ pub fn despawn_copier(mut commands: Commands, query: Query<Entity, With<CopierLe
     }
 }
 
-pub fn spawn_copier(
+pub fn spawn_bfstart(
     mut commands: Commands,
     level_assets: Res<LevelAssets>,
     mut materials: ResMut<Assets<SkyBoxMaterial>>,
@@ -33,7 +29,7 @@ pub fn spawn_copier(
     mut fps_controller: Query<&mut FpsController>,
     mut text_feed: ResMut<TextFeed>,
 ) {
-    text_feed.push("Whoops, you're in some random office building.");
+    text_feed.push("Hey, we need you to infiltrate the facility and quickly eliminate the security drones in each sector. Take the teleporters from one sector to the next to get to the control room …an unfortunate side effect is that they might transport you to the wrong coordinates.");
     let mut fps_controller = fps_controller.get_single_mut().unwrap();
     fps_controller.gravity = crate::character_controller::GRAVITY;
     // SKYBOX
@@ -41,47 +37,42 @@ pub fn spawn_copier(
         .spawn(MaterialMeshBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1000.0 })),
             material: materials.add(SkyBoxMaterial {
-                env_texture: Some(texture_assets.kloppenheim_05_puresky.clone()),
+                env_texture: Some(texture_assets.belfast_sunset_puresky.clone()),
                 uv_offset: vec2(0.0, 0.0),
-                brightness: 1.0,
-                contrast: 1.0,
+                brightness: 0.1,
+                contrast: 1.8,
             }),
             ..default()
         })
-        .insert(CopierLevel);
+        .insert(BFStartLevel);
     let env_settings = EnvSettings {
-        env_spec: 0.2,
-        env_diff: 0.2,
+        env_spec: 0.1,
+        env_diff: 0.1,
         emit_mult: 1.0,
     };
     commands
         .spawn(SceneBundle {
-            scene: level_assets.copierroom_room.clone(),
+            scene: level_assets.bf_start_building.clone(),
             ..default()
         })
         .insert(AddTrimeshPhysics)
         .insert(env_settings)
-        .insert(CopierLevel);
+        .insert(BFStartLevel);
     commands
         .spawn(SceneBundle {
-            scene: level_assets.copierroom_props.clone(),
+            scene: level_assets.bf_start_grass.clone(),
             ..default()
         })
         .insert(AddTrimeshPhysics)
         .insert(env_settings)
-        .insert(CopierLevel);
+        .insert(BFStartLevel)
+        .insert(SetGrassMaterial2);
     commands
         .spawn(SceneBundle {
-            scene: level_assets.copier_dust.clone(),
+            scene: level_assets.bf_start_rocks.clone(),
             ..default()
         })
-        .insert(SetLightShaftMaterial(LightShaftsMaterial {
-            color: vec3(1.0, 1.0, 1.0),
-            shaft: 1.0,
-            dust: 1.0,
-            dust_size: 1.0,
-            dust_qty_sub: 0.0,
-            dust_speed: 1.0,
-        }))
-        .insert(CopierLevel);
+        .insert(AddTrimeshPhysics)
+        .insert(env_settings)
+        .insert(BFStartLevel);
 }

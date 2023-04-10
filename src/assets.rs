@@ -21,6 +21,8 @@ pub struct TextureAssets {
     pub kloppenheim_05_puresky: Handle<Image>,
     #[asset(path = "environment_maps/hilly_terrain_01_puresky_2k.ktx2")]
     pub hilly_terrain_01_puresky: Handle<Image>,
+    #[asset(path = "environment_maps/belfast_sunset_puresky_2k.ktx2")]
+    pub belfast_sunset_puresky: Handle<Image>,
 }
 
 #[derive(AssetCollection, Resource)]
@@ -91,10 +93,52 @@ pub struct LevelAssets {
     #[asset(path = "levels/copier/copier_dust.gltf#Scene0")]
     pub copier_dust: Handle<Scene>,
 
+    // BF START
+    #[asset(path = "levels/bf_start/expbf_start_building.gltf#Scene0")]
+    pub bf_start_building: Handle<Scene>,
+    #[asset(path = "levels/bf_start/expbf_start_grass.gltf#Scene0")]
+    pub bf_start_grass: Handle<Scene>,
+    #[asset(path = "levels/bf_start/expbf_start_rocks.gltf#Scene0")]
+    pub bf_start_rocks: Handle<Scene>,
+
+    // BF1
+    #[asset(path = "levels/bf1/expbf1_start.gltf#Scene0")]
+    pub bf1_start: Handle<Scene>,
+    #[asset(path = "levels/bf1/expbf1_mid.gltf#Scene0")]
+    pub bf1_mid: Handle<Scene>,
+    #[asset(path = "levels/bf1/expbf1_down.gltf#Scene0")]
+    pub bf1_down: Handle<Scene>,
+    #[asset(path = "levels/bf1/expbf1_blinds.gltf#Scene0")]
+    pub bf1_blinds: Handle<Scene>,
+    #[asset(path = "levels/bf1/bf1_lights.gltf#Scene0")]
+    pub bf1_lights: Handle<Scene>,
+    #[asset(path = "levels/bf1/bf1_enemy_spawns.gltf#Scene0")]
+    pub bf1_enemy_spawns: Handle<Scene>,
+
+    // BFA1
+    #[asset(path = "levels/bfa/expbfa_bfa1.gltf#Scene0")]
+    pub bfa_bfa1: Handle<Scene>,
+    #[asset(path = "levels/bfa/bfa1_enemy_spawns.gltf#Scene0")]
+    pub bfa1_enemy_spawns: Handle<Scene>,
+
+    // BFA2
+    #[asset(path = "levels/bfa/expbfa_bfa2.gltf#Scene0")]
+    pub bfa_bfa2: Handle<Scene>,
+    #[asset(path = "levels/bfa/bfa2_enemy_spawns.gltf#Scene0")]
+    pub bfa2_enemy_spawns: Handle<Scene>,
+
+    // BFA3
+    #[asset(path = "levels/bfa/expbfa_bfa3.gltf#Scene0")]
+    pub bfa_bfa3: Handle<Scene>,
+    #[asset(path = "levels/bfa/bfa3_enemy_spawns.gltf#Scene0")]
+    pub bfa3_enemy_spawns: Handle<Scene>,
+
+    // bfa_triggers
+    #[asset(path = "levels/bfa/bfa_triggers.gltf#Scene0")]
+    pub bfa_triggers: Handle<Scene>,
+
     // TREE
-    #[asset(path = "tree.gltf#Scene0")]
-    pub tree: Handle<Scene>,
-    #[asset(path = "tree_burnt.gltf#Scene0")]
+    #[asset(path = "props/tree_burnt.gltf#Scene0")]
     pub tree_burnt: Handle<Scene>,
 }
 
@@ -170,6 +214,7 @@ fn make_env_repeat(texture_assets: Res<TextureAssets>, mut images: ResMut<Assets
         texture_assets.hilly_terrain_01_puresky.clone(),
         texture_assets.kloppenheim_05_puresky.clone(),
         texture_assets.quarry_04_puresky.clone(),
+        texture_assets.belfast_sunset_puresky.clone(),
     ] {
         if let Some(mut detail) = images.get_mut(&handle) {
             detail.sampler_descriptor = ImageSampler::Descriptor(SamplerDescriptor {

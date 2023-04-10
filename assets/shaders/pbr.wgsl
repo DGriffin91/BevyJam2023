@@ -100,10 +100,16 @@ var direct_light_mult = 0.001;
     var detail = 0.0;
 #ifdef GRASS
   output_color = vec4(grass(V, in.world_position.xz * 0.08), 1.0);
-#else
+#endif
+#ifdef GRASS2
+  output_color = vec4(saturation(grass(V, in.world_position.xz * 0.08), 0.6), 1.0);
+#endif
+#ifndef GRASS
+#ifndef GRASS2
     detail += textureSample(detail_texture, detail_sampler, in.uv * 0.1).r * 1.5;
     detail += textureSample(detail_texture, detail_sampler, in.uv * 0.8).r * 0.5;
     detail += textureSampleBias(detail_texture, detail_sampler, in.uv * 8.0, -1.5).r * 1.5;
+#endif
 #endif
     // ---------------- Texture noise
 
@@ -172,8 +178,14 @@ var direct_light_mult = 0.001;
         pbr_input.flags = mesh.flags;
 #ifdef GRASS
         output_color *= pbr(pbr_input, direct_light_mult) * 3.0;
-#else
+#endif
+#ifdef GRASS2
+        output_color *= pow(pbr(pbr_input, direct_light_mult) * 1.5, vec4(1.5)) * 7.0;
+#endif
+#ifndef GRASS
+#ifndef GRASS2
         output_color = pbr(pbr_input, direct_light_mult);
+#endif
 #endif
 
 

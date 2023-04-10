@@ -1,41 +1,39 @@
-use bevy::{
-    math::{vec2, vec3},
-    prelude::*,
-};
+use bevy::{math::vec3, prelude::*};
 use bevy_fps_controller::controller::FpsController;
-use bevy_rapier3d::prelude::Velocity;
 
 use crate::{
-    assets::{LevelAssets, TextureAssets},
+    assets::LevelAssets,
     light_shafts::{LightShaftsMaterial, SetLightShaftMaterial},
-    materials::skybox::SkyBoxMaterial,
     pbr_material::EnvSettings,
     physics::AddTrimeshPhysics,
+    ui::TextFeed,
 };
 
 #[derive(Component)]
 pub struct ShowerLevel;
 
-pub fn spawn_player_shower(mut query: Query<(&mut Transform, &mut Velocity), With<FpsController>>) {
-    for (mut transform, mut velocity) in &mut query {
-        velocity.linvel = Vec3::ZERO;
-        transform.translation = vec3(0.0, 0.0, 0.0);
-    }
-}
-
 pub fn despawn_shower(mut commands: Commands, query: Query<Entity, With<ShowerLevel>>) {
     for entity in &query {
-        commands.entity(entity).despawn_recursive();
+        if commands.get_entity(entity).is_some() {
+            commands.entity(entity).despawn_recursive();
+        }
     }
 }
 
 pub fn spawn_shower(
     mut commands: Commands,
     level_assets: Res<LevelAssets>,
-    mut materials: ResMut<Assets<SkyBoxMaterial>>,
-    texture_assets: Res<TextureAssets>,
-    mut meshes: ResMut<Assets<Mesh>>,
+    //mut materials: ResMut<Assets<SkyBoxMaterial>>,
+    //texture_assets: Res<TextureAssets>,
+    //mut meshes: ResMut<Assets<Mesh>>,
+    mut fps_controller: Query<&mut FpsController>,
+    mut text_feed: ResMut<TextFeed>,
 ) {
+    text_feed.push(
+        "Oops, that’s…a shower. At least you’re clean. Hurry up and get back to the facility.",
+    );
+    let mut fps_controller = fps_controller.get_single_mut().unwrap();
+    fps_controller.gravity = crate::character_controller::GRAVITY;
     let env_settings = EnvSettings {
         env_spec: 0.1,
         env_diff: 0.1,

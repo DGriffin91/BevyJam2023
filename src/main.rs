@@ -2,7 +2,6 @@
 
 mod assets;
 mod character_controller;
-mod editor;
 mod levels;
 mod materials;
 mod physics;
@@ -17,6 +16,7 @@ use bevy_asset_loader::prelude::{LoadingState, LoadingStateAppExt};
 use bevy_polyline::PolylinePlugin;
 use character_controller::CharacterController;
 
+use iyes_progress::{ProgressCounter, ProgressPlugin};
 use levels::{GameLevel, LevelsPlugin};
 use light_shafts::LightShaftsPlugin;
 use materials::{
@@ -30,7 +30,7 @@ use pbr_material::{
 use physics::PhysicsStuff;
 
 use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     pbr::DirectionalLightShadowMap,
     prelude::*,
     window::PresentMode,
@@ -67,9 +67,8 @@ fn main() {
         .add_state::<GameLoading>()
         .add_state::<GameLevel>()
         .insert_resource(Msaa::Off)
-        .add_loading_state(
-            LoadingState::new(GameLoading::AssetLoading).continue_to_state(GameLoading::Loaded),
-        )
+        .add_loading_state(LoadingState::new(GameLoading::AssetLoading))
+        .add_plugin(ProgressPlugin::new(GameLoading::AssetLoading).continue_to(GameLoading::Loaded))
         .add_collection_to_loading_state::<_, TextureAssets>(GameLoading::AssetLoading)
         .add_collection_to_loading_state::<_, LevelAssets>(GameLoading::AssetLoading)
         .add_collection_to_loading_state::<_, UnitAssets>(GameLoading::AssetLoading)
@@ -94,7 +93,6 @@ fn main() {
                 }), //.disable::<PipelinedRenderingPlugin>(),
         )
         .add_plugin(MaterialPlugin::<CustomStandardMaterial>::default())
-        //.add_plugin(GameEditorPlugin)
         .add_plugin(PhysicsStuff)
         .add_plugin(CharacterController)
         .add_plugin(SkyBoxPlugin)
@@ -108,6 +106,8 @@ fn main() {
         .add_plugin(UnitsPlugin)
         .add_plugin(PolylinePlugin)
         .add_plugin(PlayerPlugin)
+        .add_system(start_kitchen.in_schedule(OnEnter(GameLoading::Loaded)))
+        .init_resource::<LevelsStarted>()
         .add_systems(
             (
                 setup_env_settings.run_if(in_state(GameLoading::Loaded)),
@@ -117,5 +117,26 @@ fn main() {
                 .chain()
                 .in_set(MaterialsSet::MaterialSwap),
         )
+        .add_system(print_progress)
         .run();
+}
+
+#[derive(Resource, Default)]
+struct LevelsStarted(bool);
+
+fn start_kitchen(
+    mut next_state: ResMut<NextState<GameLevel>>,
+    mut levels_started: ResMut<LevelsStarted>,
+) {
+    levels_started.0 = true;
+    next_state.0 = Some(GameLevel::Kitchen);
+}
+
+fn print_progress(progress: Option<Res<ProgressCounter>>, mut last_done: Local<u32>) {
+    if let Some(progress) = progress.map(|counter| counter.progress()) {
+        if progress.done > *last_done {
+            *last_done = progress.done;
+            dbg!(progress);
+        }
+    }
 }

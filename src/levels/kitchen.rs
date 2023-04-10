@@ -3,7 +3,6 @@ use bevy::{
     prelude::*,
 };
 use bevy_fps_controller::controller::FpsController;
-use bevy_rapier3d::prelude::Velocity;
 
 use crate::{
     assets::{LevelAssets, TextureAssets},
@@ -11,23 +10,17 @@ use crate::{
     materials::skybox::SkyBoxMaterial,
     pbr_material::EnvSettings,
     physics::AddTrimeshPhysics,
+    ui::TextFeed,
 };
 
 #[derive(Component)]
 pub struct KitchenLevel;
 
-pub fn spawn_player_kitchen(
-    mut query: Query<(&mut Transform, &mut Velocity), With<FpsController>>,
-) {
-    for (mut transform, mut velocity) in &mut query {
-        velocity.linvel = Vec3::ZERO;
-        transform.translation = vec3(0.0, 0.0, 0.0);
-    }
-}
-
 pub fn despawn_kitchen(mut commands: Commands, query: Query<Entity, With<KitchenLevel>>) {
     for entity in &query {
-        commands.entity(entity).despawn_recursive();
+        if commands.get_entity(entity).is_some() {
+            commands.entity(entity).despawn_recursive();
+        }
     }
 }
 
@@ -37,7 +30,12 @@ pub fn spawn_kitchen(
     mut materials: ResMut<Assets<SkyBoxMaterial>>,
     texture_assets: Res<TextureAssets>,
     mut meshes: ResMut<Assets<Mesh>>,
+    mut fps_controller: Query<&mut FpsController>,
+    mut text_feed: ResMut<TextFeed>,
 ) {
+    text_feed.push("Escape the kitchen");
+    let mut fps_controller = fps_controller.get_single_mut().unwrap();
+    fps_controller.gravity = crate::character_controller::GRAVITY;
     // SKYBOX
     commands
         .spawn(MaterialMeshBundle {

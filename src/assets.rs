@@ -195,6 +195,8 @@ pub struct PropAssets {
     #[asset(path = "props/projectile/crosshair.gltf#Scene0")]
     pub crosshair: Handle<Scene>,
 }
+#[derive(AssetCollection, Resource)]
+pub struct AudioAssets {}
 
 pub struct AssetProcPlugin;
 impl Plugin for AssetProcPlugin {

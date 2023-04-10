@@ -13,6 +13,7 @@ mod util;
 use assets::{AssetProcPlugin, LevelAssets, PropAssets, TextureAssets, UnitAssets};
 use bevy_asset_loader::prelude::{LoadingState, LoadingStateAppExt};
 
+use bevy_kira_audio::AudioPlugin;
 use bevy_polyline::PolylinePlugin;
 use character_controller::CharacterController;
 
@@ -106,6 +107,7 @@ fn main() {
         .add_plugin(UnitsPlugin)
         .add_plugin(PolylinePlugin)
         .add_plugin(PlayerPlugin)
+        .add_plugin(AudioPlugin)
         .add_system(start_kitchen.in_schedule(OnEnter(GameLoading::Loaded)))
         .init_resource::<LevelsStarted>()
         .add_systems(

@@ -107,6 +107,9 @@ fn setup(
                 forward_speed: 50.0,
                 air_speed_cap: 7.0,
                 gravity: 0.0,
+                fly_speed: 0.0,
+                fast_fly_speed: 0.0,
+                key_fly: KeyCode::Yen,
                 ..default()
             },
         ))

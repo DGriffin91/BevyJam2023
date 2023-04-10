@@ -4,8 +4,31 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 
+# Bevy defaults minus audio and some other not needed things
+# see https://github.com/bevyengine/bevy/blob/main/Cargo.toml#L31-L54
+default = [
+    "bevy/animation",
+    "bevy/bevy_asset",
+    "bevy/bevy_scene",
+    "bevy/bevy_winit",
+    "bevy/bevy_core_pipeline",
+    "bevy/bevy_pbr",
+    "bevy/bevy_gltf",
+    "bevy/bevy_render",
+    "bevy/bevy_sprite",
+    "bevy/bevy_text",
+    "bevy/bevy_ui",
+    "bevy/png",
+    "bevy/hdr",
+    "bevy/zstd",
+    "bevy/x11",
+    "bevy/ktx2",
+    "bevy/filesystem_watcher",
+    "bevy/tonemapping_luts"
+]
+
 [dependencies]
-bevy = { version = "0.10", features = ["exr"] }
+bevy = { version = "0.10", features = ["exr"], default-features = false }
 bevy_rapier3d = "0.21"
 bevy_fps_controller = "0.2"
 serde = { version = "1.0", features = ["derive"] }
@@ -16,6 +39,7 @@ rand = "0.8"
 rand_pcg = "0.3"
 bevy_polyline = "0.6.0"
 iyes_progress = "0.8.0"
+bevy_kira_audio = { version = "0.15" }
 
 [profile.dev]
 opt-level = 3

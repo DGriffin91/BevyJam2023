@@ -24,7 +24,7 @@ fn set_music(
         if let Some(current_handle) = &*current_handle {
             if let Some(instance) = audio_instances.get_mut(current_handle) {
                 instance.set_volume(
-                    audio_volumes.music as f64 * 0.9,
+                    audio_volumes.music as f64 * 0.6,
                     AudioTween::linear(Duration::from_secs_f32(0.1)),
                 );
             }
@@ -59,12 +59,12 @@ fn set_music(
     *current_handle = Some(
         audio
             .play(clip.clone())
-            .looped()
             .fade_in(AudioTween::new(
                 Duration::from_secs_f32(0.5),
                 AudioEasing::OutPowi(2),
             ))
-            .with_volume(audio_volumes.music as f64 * 0.9)
+            .with_volume(audio_volumes.music as f64 * 0.6)
+            .looped()
             .handle(),
     );
 }

@@ -22,7 +22,7 @@ fn set_music(
 ) {
     if audio_volumes.is_changed() {
         if let Some(current_handle) = &*current_handle {
-            if let Some(instance) = audio_instances.get_mut(&current_handle) {
+            if let Some(instance) = audio_instances.get_mut(current_handle) {
                 instance.set_volume(
                     audio_volumes.music as f64 * 0.9,
                     AudioTween::linear(Duration::from_secs_f32(0.1)),
@@ -34,7 +34,7 @@ fn set_music(
         return;
     }
     if let Some(current_handle) = &*current_handle {
-        if let Some(instance) = audio_instances.get_mut(&current_handle) {
+        if let Some(instance) = audio_instances.get_mut(current_handle) {
             instance.stop(AudioTween::new(
                 Duration::from_secs_f32(6.5),
                 AudioEasing::InOutPowi(2),

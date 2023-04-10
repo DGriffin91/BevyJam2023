@@ -87,11 +87,13 @@ fn main() {
                 })
                 .set(WindowPlugin {
                     primary_window: Some(Window {
+                        title: String::from("traverse"),
                         present_mode: PresentMode::AutoVsync,
+                        fit_canvas_to_parent: true,
                         ..default()
                     }),
                     ..default()
-                }), //.disable::<PipelinedRenderingPlugin>(),
+                }),
         )
         .add_plugin(MaterialPlugin::<CustomStandardMaterial>::default())
         .add_plugin(PhysicsStuff)

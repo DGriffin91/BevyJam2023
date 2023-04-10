@@ -72,6 +72,13 @@ pub fn spawn_copier(
         .insert(CopierLevel);
     commands
         .spawn(SceneBundle {
+            scene: level_assets.copierroom_coordinatesclock.clone(),
+            ..default()
+        })
+        .insert(env_settings)
+        .insert(CopierLevel);
+    commands
+        .spawn(SceneBundle {
             scene: level_assets.copier_dust.clone(),
             ..default()
         })

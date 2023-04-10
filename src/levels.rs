@@ -3,9 +3,11 @@ use bevy::{math::vec3, prelude::*};
 use crate::GameLoading;
 
 use self::{
+    bathroom::{despawn_bathroom, spawn_bathroom},
     bf1::{despawn_bf1, spawn_bf1},
     bf_start::{despawn_bfstart, spawn_bfstart},
     bfa::{despawn_bfa1, despawn_bfa2, despawn_bfa3, spawn_bfa1, spawn_bfa2, spawn_bfa3},
+    controlroom::{despawn_control_room, spawn_control_room},
     copier::{despawn_copier, spawn_copier},
     houses::{despawn_houses, spawn_houses},
     kitchen::{despawn_kitchen, spawn_kitchen},
@@ -13,9 +15,11 @@ use self::{
     urban::{despawn_urban, spawn_urban},
 };
 
+pub mod bathroom;
 pub mod bf1;
 pub mod bf_start;
 pub mod bfa;
+pub mod controlroom;
 pub mod copier;
 pub mod houses;
 pub mod kitchen;
@@ -54,7 +58,7 @@ impl GameLevel {
             GameLevel::BFA1 => vec3(-271.0, 0.2, 44.0),
             GameLevel::BFA2 => vec3(-1.35, 0.2, 23.0),
             GameLevel::BFA3 => vec3(372.0, 0.2, -9.5),
-            GameLevel::ControlRoom => vec3(0.0, 0.1, 0.0),
+            GameLevel::ControlRoom => vec3(0.0, 2.2, -15.8),
         }
     }
     pub fn teleporter_pos_close_enough(&self, pos: Vec3) -> bool {
@@ -71,7 +75,7 @@ impl GameLevel {
             GameLevel::BFA1 => vec3(-350.534, 0.0, -79.1253).distance(pos) < 8.0,
             GameLevel::BFA2 => vec3(-1.53535, 0.0, -195.286).distance(pos) < 8.0,
             GameLevel::BFA3 => vec3(372.869, 0.0, -91.5084).distance(pos) < 8.0,
-            GameLevel::ControlRoom => false,
+            GameLevel::ControlRoom => vec3(0.0, -9.0, 18.0).distance(pos) < 4.0,
         }
     }
     pub fn clock_position_close_enough(&self, pos: Vec3) -> bool {
@@ -180,6 +184,9 @@ pub struct LevelsPlugin;
 impl Plugin for LevelsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems((
+            spawn_bathroom
+                .in_schedule(OnEnter(GameLevel::Bathroom))
+                .run_if(in_state(GameLoading::Loaded)),
             spawn_houses
                 .in_schedule(OnEnter(GameLevel::Houses))
                 .run_if(in_state(GameLoading::Loaded)),
@@ -210,8 +217,12 @@ impl Plugin for LevelsPlugin {
             spawn_bfa3
                 .in_schedule(OnEnter(GameLevel::BFA3))
                 .run_if(in_state(GameLoading::Loaded)),
+            spawn_control_room
+                .in_schedule(OnEnter(GameLevel::ControlRoom))
+                .run_if(in_state(GameLoading::Loaded)),
         ))
         .add_systems((
+            despawn_bathroom.in_schedule(OnExit(GameLevel::Bathroom)),
             despawn_houses.in_schedule(OnExit(GameLevel::Houses)),
             despawn_kitchen.in_schedule(OnExit(GameLevel::Kitchen)),
             despawn_urban.in_schedule(OnExit(GameLevel::Urban)),
@@ -222,6 +233,7 @@ impl Plugin for LevelsPlugin {
             despawn_bfa1.in_schedule(OnExit(GameLevel::BFA1)),
             despawn_bfa2.in_schedule(OnExit(GameLevel::BFA2)),
             despawn_bfa3.in_schedule(OnExit(GameLevel::BFA3)),
+            despawn_control_room.in_schedule(OnExit(GameLevel::ControlRoom)),
         ));
     }
 }

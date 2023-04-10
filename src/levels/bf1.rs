@@ -6,7 +6,6 @@ use crate::{
     materials::skybox::SkyBoxMaterial,
     pbr_material::EnvSettings,
     physics::AddTrimeshPhysics,
-    ui::TextFeed,
     units::EnemySpawns,
 };
 
@@ -28,9 +27,7 @@ pub fn spawn_bf1(
     texture_assets: Res<TextureAssets>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut fps_controller: Query<&mut FpsController>,
-    mut text_feed: ResMut<TextFeed>,
 ) {
-    text_feed.push("We need you to eliminate the security drones in each sector as fast as you can. Teleporters are setup to bring you from one sector to the next... an unfortunate side effect is that they sometimes teleport you to the wrong coordinates.");
     let mut fps_controller = fps_controller.get_single_mut().unwrap();
     fps_controller.gravity = crate::character_controller::GRAVITY;
     // SKYBOX

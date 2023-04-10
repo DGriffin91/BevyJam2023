@@ -259,7 +259,7 @@ pub fn spawn_enemies(
                             max_radius: 2.0,
                             dest: spawn_pos,
                             current_state: UnitsStates::Stop,
-                            state_timer: rng.gen_range(5.5..6.5),
+                            state_timer: rng.gen_range(1.5..2.5),
                             current_clip: None,
                             speed: rng.gen_range(0.8..2.5),
                             arrived: false,
@@ -283,45 +283,45 @@ pub fn spawn_enemies(
     }
 }
 
-fn _spawn_some_units(
-    mut commands: Commands,
-    unit_assets: Res<UnitAssets>,
-    mut rng: ResMut<GameRng>,
-) {
-    for x in 0..0 {
-        for z in 0..0 {
-            let spawn_pos = vec3(x as f32 * 4.0 - 20.0, 0.0, z as f32 * 4.0 - 10.0);
-            commands
-                .spawn(SceneBundle {
-                    scene: unit_assets.unit1.clone(),
-                    transform: Transform::from_translation(spawn_pos),
-                    ..default()
-                })
-                .insert(UnitData {
-                    spawn: spawn_pos,
-                    max_radius: 2.0,
-                    dest: spawn_pos,
-                    current_state: UnitsStates::Stop,
-                    state_timer: rng.gen_range(2.5..4.5),
-                    current_clip: None,
-                    speed: rng.gen_range(0.8..2.5),
-                    arrived: false,
-                    init: false,
-                    target_to_shoot: None,
-                    target_to_apply_damage: None,
-                    range: 50.0,
-                    fire_cooldown: 1.0,
-                    fire_rate: 1.0,
-                })
-                .insert(Collider::capsule(
-                    vec3(0.0, 0.0, 0.0),
-                    vec3(0.0, 1.6, 0.0),
-                    0.4,
-                ))
-                .insert(Health(1.0));
-        }
-    }
-}
+//fn _spawn_some_units(
+//    mut commands: Commands,
+//    unit_assets: Res<UnitAssets>,
+//    mut rng: ResMut<GameRng>,
+//) {
+//    for x in 0..0 {
+//        for z in 0..0 {
+//            let spawn_pos = vec3(x as f32 * 4.0 - 20.0, 0.0, z as f32 * 4.0 - 10.0);
+//            commands
+//                .spawn(SceneBundle {
+//                    scene: unit_assets.unit1.clone(),
+//                    transform: Transform::from_translation(spawn_pos),
+//                    ..default()
+//                })
+//                .insert(UnitData {
+//                    spawn: spawn_pos,
+//                    max_radius: 2.0,
+//                    dest: spawn_pos,
+//                    current_state: UnitsStates::Stop,
+//                    state_timer: rng.gen_range(2.5..4.5),
+//                    current_clip: None,
+//                    speed: rng.gen_range(0.8..2.5),
+//                    arrived: false,
+//                    init: false,
+//                    target_to_shoot: None,
+//                    target_to_apply_damage: None,
+//                    range: 50.0,
+//                    fire_cooldown: 1.0,
+//                    fire_rate: 1.0,
+//                })
+//                .insert(Collider::capsule(
+//                    vec3(0.0, 0.0, 0.0),
+//                    vec3(0.0, 1.6, 0.0),
+//                    0.4,
+//                ))
+//                .insert(Health(1.0));
+//        }
+//    }
+//}
 
 fn play_animations(
     mut units: Query<(&mut UnitData, &ChildAnimEntity)>,
@@ -345,12 +345,8 @@ fn play_animations(
                     if current_clip != clip {
                         true
                     } else {
-                        if unit.current_state.does_loop() {
-                            //if the animation loops, don't restart it
-                            false
-                        } else {
-                            true
-                        }
+                        //if the animation loops, don't restart it
+                        !unit.current_state.does_loop()
                     }
                 } else {
                     true
@@ -427,7 +423,7 @@ pub fn target_shootables(
             if this_dist < closest_dist {
                 closest_dist = this_dist;
                 closest_pos = shootable_trans.translation;
-                closest_entity = Some(shootable.clone());
+                closest_entity = Some(shootable);
                 logical_player = logical_player_shootable;
             }
         }

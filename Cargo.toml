@@ -1,5 +1,5 @@
 [package]
-name = "bevy_github_ci_template"
+name = "traverse"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -8,7 +8,6 @@ license = "MIT OR Apache-2.0"
 bevy = { version = "0.10", features = ["exr"] }
 bevy_rapier3d = "0.21"
 bevy_fps_controller = "0.2"
-bevy_mod_mesh_tools = { git = "https://github.com/DGriffin91/bevy_mod_mesh_tools" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 bevy_asset_loader = { version  = "0.16", features = ["progress_tracking"] }
@@ -17,7 +16,6 @@ rand = "0.8"
 rand_pcg = "0.3"
 bevy_polyline = "0.6.0"
 iyes_progress = "0.8.0"
-
 
 [profile.dev]
 opt-level = 3

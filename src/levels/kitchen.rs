@@ -10,7 +10,7 @@ use crate::{
     materials::skybox::SkyBoxMaterial,
     pbr_material::EnvSettings,
     physics::AddTrimeshPhysics,
-    ui::TextFeed,
+    ui::{FinishedGame, GameElapsedTime, HasEnteredControlRoom, TextFeed},
 };
 
 #[derive(Component)]
@@ -32,8 +32,21 @@ pub fn spawn_kitchen(
     mut meshes: ResMut<Assets<Mesh>>,
     mut fps_controller: Query<&mut FpsController>,
     mut text_feed: ResMut<TextFeed>,
+    mut game_time: ResMut<GameElapsedTime>,
+    time: Res<Time>,
+    has_entered_control_room: Res<HasEnteredControlRoom>,
+    mut finished_game: ResMut<FinishedGame>,
 ) {
-    text_feed.push("Escape the kitchen");
+    if game_time.0.is_none() {
+        game_time.0 = Some(time.elapsed_seconds());
+    }
+    if has_entered_control_room.0 {
+        finished_game.0 .0 = true;
+        finished_game.0 .1 = time.elapsed_seconds();
+        text_feed.push("You did it! Nice work.");
+    } else {
+        //text_feed.push("Escape the kitchen");
+    }
     let mut fps_controller = fps_controller.get_single_mut().unwrap();
     fps_controller.gravity = crate::character_controller::GRAVITY;
     // SKYBOX

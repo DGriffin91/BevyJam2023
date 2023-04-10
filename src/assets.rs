@@ -28,13 +28,13 @@ pub struct TextureAssets {
 #[derive(AssetCollection, Resource)]
 pub struct LevelAssets {
     // URBAN
-    #[asset(path = "levels/urban/ExpUrban.blend_FarAwayBuildings.gltf#Scene0")]
+    #[asset(path = "levels/urban/expurban_farawaybuildings.gltf#Scene0")]
     pub urban_far_away_buildings: Handle<Scene>,
-    #[asset(path = "levels/urban/ExpUrban.blend_Props.gltf#Scene0")]
+    #[asset(path = "levels/urban/expurban_props.gltf#Scene0")]
     pub urban_props: Handle<Scene>,
-    #[asset(path = "levels/urban/ExpUrban.blend_Structure.gltf#Scene0")]
+    #[asset(path = "levels/urban/expurban_structure.gltf#Scene0")]
     pub urban_structure: Handle<Scene>,
-    #[asset(path = "levels/urban/ExpUrban.blend_SurroundingBuildings.gltf#Scene0")]
+    #[asset(path = "levels/urban/expurban_surroundingbuildings.gltf#Scene0")]
     pub urban_surrounding_buildings: Handle<Scene>,
     #[asset(path = "levels/urban/urban_dust.gltf#Scene0")]
     pub urban_dust: Handle<Scene>,
@@ -85,6 +85,16 @@ pub struct LevelAssets {
     #[asset(path = "levels/shower/shower_dust.gltf#Scene0")]
     pub shower_dust: Handle<Scene>,
 
+    // BATHROOM
+    #[asset(path = "levels/bathroom/expbathroom_clockcoords.gltf#Scene0")]
+    pub bathroom_clockcoords: Handle<Scene>,
+    #[asset(path = "levels/bathroom/expbathroom_props.gltf#Scene0")]
+    pub bathroom_props: Handle<Scene>,
+    #[asset(path = "levels/bathroom/expbathroom_structure.gltf#Scene0")]
+    pub bathroom_structure: Handle<Scene>,
+    #[asset(path = "levels/bathroom/bathroom_dust.gltf#Scene0")]
+    pub bathroom_dust: Handle<Scene>,
+
     // COPIER
     #[asset(path = "levels/copier/expcopierroom_props.gltf#Scene0")]
     pub copierroom_props: Handle<Scene>,
@@ -92,6 +102,16 @@ pub struct LevelAssets {
     pub copierroom_room: Handle<Scene>,
     #[asset(path = "levels/copier/copier_dust.gltf#Scene0")]
     pub copier_dust: Handle<Scene>,
+    #[asset(path = "levels/copier/expcopierroom_coordinatesclock.gltf#Scene0")]
+    pub copierroom_coordinatesclock: Handle<Scene>,
+
+    // CONTROL ROOM
+    #[asset(path = "levels/controlroom/expcontrolroom_counter.gltf#Scene0")]
+    pub controlroom_counter: Handle<Scene>,
+    #[asset(path = "levels/controlroom/expcontrolroom_props.gltf#Scene0")]
+    pub controlroom_props: Handle<Scene>,
+    #[asset(path = "levels/controlroom/expcontrolroom_structure.gltf#Scene0")]
+    pub controlroom_structure: Handle<Scene>,
 
     // BF START
     #[asset(path = "levels/bf_start/expbf_start_building.gltf#Scene0")]
@@ -136,10 +156,6 @@ pub struct LevelAssets {
     // bfa_triggers
     #[asset(path = "levels/bfa/bfa_triggers.gltf#Scene0")]
     pub bfa_triggers: Handle<Scene>,
-
-    // TREE
-    #[asset(path = "props/tree_burnt.gltf#Scene0")]
-    pub tree_burnt: Handle<Scene>,
 }
 
 #[derive(AssetCollection, Resource)]

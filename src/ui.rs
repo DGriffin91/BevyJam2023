@@ -2,7 +2,7 @@ use bevy::{prelude::*, window::CursorGrabMode};
 use bevy_egui::{
     egui::{
         epaint::Shadow, style::WidgetVisuals, vec2, Color32, FontFamily, FontId, Margin, Rounding,
-        Stroke,
+        Slider, Stroke,
     },
     *,
 };
@@ -10,9 +10,9 @@ use bevy_fps_controller::controller::{FpsController, RenderPlayer};
 use bevy_rapier3d::prelude::Velocity;
 use iyes_progress::ProgressCounter;
 
+use crate::ui::egui::TextStyle::Heading;
 use crate::ui::egui::TextStyle::Monospace;
 use crate::ui::egui::TextStyle::Small;
-use crate::{assets::UnitAssets, ui::egui::TextStyle::Heading};
 use crate::{character_controller::JUMP_SPEED, ui::egui::TextStyle::Body};
 use crate::{levels::GameLevel, units::UnitData, GameLoading, Health};
 use crate::{ui::egui::TextStyle::Button, units::Difficulty};
@@ -25,7 +25,10 @@ impl Plugin for GameUiPlugin {
             .add_system(loading_ui.run_if(in_state(GameLoading::AssetLoading)))
             .insert_resource(PlayerCode::default())
             .insert_resource(SettingClock::default())
-            .insert_resource(TextFeed::default());
+            .insert_resource(TextFeed::default())
+            .insert_resource(GameElapsedTime::default())
+            .insert_resource(HasEnteredControlRoom::default())
+            .insert_resource(FinishedGame::default());
     }
 }
 
@@ -36,6 +39,15 @@ pub struct SettingClock(pub bool);
 
 #[derive(Resource, Default)]
 pub struct TextFeed(pub String);
+
+#[derive(Resource, Default)]
+pub struct GameElapsedTime(pub Option<f32>);
+
+#[derive(Resource, Default)]
+pub struct HasEnteredControlRoom(pub bool);
+
+#[derive(Resource, Default)]
+pub struct FinishedGame(pub (bool, f32));
 
 impl TextFeed {
     pub fn push(&mut self, text: &str) {
@@ -58,7 +70,10 @@ pub fn ui_system(
     keys: Res<Input<KeyCode>>,
     mut one_bot_left: Local<bool>,
     mut difficulty: ResMut<Difficulty>,
+    end_game: (Res<GameElapsedTime>, Res<FinishedGame>),
+    time: Res<Time>,
 ) {
+    let (game_time, game_finished) = end_game;
     let drones_remaining = units.iter().count();
     if drones_remaining == 1 {
         *one_bot_left = true;
@@ -92,8 +107,23 @@ pub fn ui_system(
             .show(contexts.ctx_mut(), |ui| {
                 ui.vertical_centered_justified(|ui| {
                     if let Some(health) = &health.iter().next() {
-                        ui.label(format!("HEALTH {}", (health.0 * 100.0).round() as i32));
-                        ui.label(format!("{} DRONES REMAINING", drones_remaining));
+                        if game_finished.0 .0 {
+                            if let Some(game_time) = game_time.0 {
+                                ui.label(format!(
+                                    "TIME ELAPSED {:.1}",
+                                    game_finished.0 .1 - game_time
+                                ));
+                            }
+                        } else {
+                            if let Some(game_time) = game_time.0 {
+                                ui.label(format!(
+                                    "TIME ELAPSED {:.1}",
+                                    time.elapsed_seconds() - game_time
+                                ));
+                            }
+                            ui.label(format!("HEALTH {}", (health.0 * 100.0).round() as i32));
+                            ui.label(format!("{} DRONES REMAINING", drones_remaining));
+                        }
                     }
                 })
             });
@@ -154,6 +184,13 @@ pub fn ui_system(
                         }
                         if ui.radio(ultra, "ULTRA").clicked() {
                             *difficulty = Difficulty::Ultra;
+                        }
+                        let mut sens = fps_controller.sensitivity * 1000.0;
+                        if ui
+                            .add(Slider::new(&mut sens, 0.1..=5.0).text("Mouse Sensitivity"))
+                            .changed()
+                        {
+                            fps_controller.sensitivity = sens / 1000.0;
                         }
                     })
                 });

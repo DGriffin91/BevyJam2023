@@ -16,7 +16,7 @@ use bevy_asset_loader::prelude::{LoadingState, LoadingStateAppExt};
 use bevy_polyline::PolylinePlugin;
 use character_controller::CharacterController;
 
-use iyes_progress::{ProgressCounter, ProgressPlugin};
+use iyes_progress::ProgressPlugin;
 use levels::{GameLevel, LevelsPlugin};
 use light_shafts::LightShaftsPlugin;
 use materials::{
@@ -30,7 +30,7 @@ use pbr_material::{
 use physics::PhysicsStuff;
 
 use bevy::{
-    diagnostic::{Diagnostics, FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     pbr::DirectionalLightShadowMap,
     prelude::*,
     window::PresentMode,
@@ -117,7 +117,6 @@ fn main() {
                 .chain()
                 .in_set(MaterialsSet::MaterialSwap),
         )
-        .add_system(print_progress)
         .run();
 }
 
@@ -130,13 +129,4 @@ fn start_kitchen(
 ) {
     levels_started.0 = true;
     next_state.0 = Some(GameLevel::Kitchen);
-}
-
-fn print_progress(progress: Option<Res<ProgressCounter>>, mut last_done: Local<u32>) {
-    if let Some(progress) = progress.map(|counter| counter.progress()) {
-        if progress.done > *last_done {
-            *last_done = progress.done;
-            dbg!(progress);
-        }
-    }
 }

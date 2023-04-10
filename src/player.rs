@@ -93,7 +93,7 @@ fn add_gun(
             .id();
         commands
             .entity(player)
-            .insert(GunRef(gun.clone()))
+            .insert(GunRef(gun))
             .add_child(gun)
             .add_child(gun_emit)
             .add_child(flash)
@@ -124,7 +124,7 @@ fn add_crosshair(
             .id();
         commands
             .entity(player)
-            .insert(CrosshairRef(crosshair.clone()))
+            .insert(CrosshairRef(crosshair))
             .add_child(crosshair);
     }
 }

@@ -65,8 +65,9 @@ impl Default for GameRng {
 pub struct Health(f32);
 
 fn main() {
-    App::new()
-        .insert_resource(GameRng::default())
+    let mut app = App::new();
+
+    app.insert_resource(GameRng::default())
         .add_state::<GameLoading>()
         .add_state::<GameLevel>()
         .insert_resource(Msaa::Off)
@@ -92,6 +93,8 @@ fn main() {
                     primary_window: Some(Window {
                         title: String::from("Traverse"),
                         present_mode: PresentMode::AutoVsync,
+                        resolution: (1280., 768.).into(),
+                        canvas: Some("#bevy".to_owned()),
                         fit_canvas_to_parent: true,
                         ..default()
                     }),
@@ -124,8 +127,9 @@ fn main() {
             )
                 .chain()
                 .in_set(MaterialsSet::MaterialSwap),
-        )
-        .run();
+        );
+
+    app.run();
 }
 
 #[derive(Resource, Default)]

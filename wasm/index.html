@@ -1,12 +1,54 @@
 <!doctype html>
 <html lang="en">
 
-<body style="margin: 0px;">
+<head>
+  <style>
+    body,
+    html {
+      height: 100%;
+    }
+
+    body {
+      background: black;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: contain;
+      touch-action: none;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    .game-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #bevy {
+      width: 800px;
+      height: 600px;
+      outline: none;
+    }
+  </style>
+</head>
+
+<body>
   <script type="module">
     import './restart-audio-context.js'
     import init from './bevy_game.js'
     init()
   </script>
+  <div class="game-container">
+    <canvas id="bevy">
+      Javascript and support for canvas is required
+    </canvas>
+  </div>
 </body>
 
 </html>

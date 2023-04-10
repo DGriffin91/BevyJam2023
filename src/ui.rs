@@ -28,7 +28,8 @@ impl Plugin for GameUiPlugin {
             .insert_resource(TextFeed::default())
             .insert_resource(GameElapsedTime::default())
             .insert_resource(HasEnteredControlRoom::default())
-            .insert_resource(FinishedGame::default());
+            .insert_resource(FinishedGame::default())
+            .insert_resource(AudioVolumes::default());
     }
 }
 
@@ -45,6 +46,21 @@ pub struct GameElapsedTime(pub Option<f32>);
 
 #[derive(Resource, Default)]
 pub struct HasEnteredControlRoom(pub bool);
+
+#[derive(Resource)]
+pub struct AudioVolumes {
+    pub sfx: f32,
+    pub music: f32,
+}
+
+impl Default for AudioVolumes {
+    fn default() -> Self {
+        AudioVolumes {
+            sfx: 0.5,
+            music: 0.5,
+        }
+    }
+}
 
 #[derive(Resource, Default)]
 pub struct FinishedGame(pub (bool, f32));
@@ -70,10 +86,14 @@ pub fn ui_system(
     keys: Res<Input<KeyCode>>,
     mut one_bot_left: Local<bool>,
     mut difficulty: ResMut<Difficulty>,
-    end_game: (Res<GameElapsedTime>, Res<FinishedGame>),
+    end_game_and_audio: (
+        Res<GameElapsedTime>,
+        Res<FinishedGame>,
+        ResMut<AudioVolumes>,
+    ),
     time: Res<Time>,
 ) {
-    let (game_time, game_finished) = end_game;
+    let (game_time, game_finished, mut audio_volumes) = end_game_and_audio;
     let drones_remaining = units.iter().count();
     if drones_remaining == 1 {
         *one_bot_left = true;
@@ -192,6 +212,10 @@ pub fn ui_system(
                         {
                             fps_controller.sensitivity = sens / 1000.0;
                         }
+                        ui.add(Slider::new(&mut audio_volumes.sfx, 0.0..=1.0).text("SFX Volume"));
+                        ui.add(
+                            Slider::new(&mut audio_volumes.music, 0.0..=1.0).text("Music Volume"),
+                        );
                     })
                 });
         } else {

@@ -1,16 +1,19 @@
 use crate::{
-    assets::PropAssets,
+    assets::{AudioAssets, PropAssets},
     character_controller::LogicalPlayerEntity,
     levels::GameLevel,
     materials::pbr_material::{EnvSettings, MaterialsSet},
-    ui::ui_system,
+    ui::{ui_system, AudioVolumes},
     units::UnitData,
-    GameLoading, Health, LevelsStarted,
+    GameLoading, GameRng, Health, LevelsStarted,
 };
 use bevy::{math::vec3, prelude::*};
 use bevy_egui::EguiContexts;
 use bevy_fps_controller::controller::{FpsController, RenderPlayer};
+
+use bevy_kira_audio::AudioControl;
 use bevy_rapier3d::prelude::*;
+use rand::seq::SliceRandom;
 
 pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
@@ -145,6 +148,10 @@ fn player_shoot(
     mut healths: Query<&mut Health>,
     time: Res<Time>,
     state: Res<State<GameLevel>>,
+    audio_assets: Res<AudioAssets>,
+    mut rng: ResMut<GameRng>,
+    audio: Res<bevy_kira_audio::Audio>,
+    audio_volumes: Res<AudioVolumes>,
 ) {
     // We will color in read the colliders hovered by the mouse.
     for (entity, camera_transform, logical_player_entity, mut gun) in &mut player {
@@ -164,6 +171,23 @@ fn player_shoot(
                 *flash = Visibility::Visible;
             }
         }
+
+        audio
+            .play(
+                [
+                    audio_assets.playergun1.clone(),
+                    audio_assets.playergun2.clone(),
+                    audio_assets.playergun3.clone(),
+                    audio_assets.playergun4.clone(),
+                    audio_assets.playergun5.clone(),
+                ]
+                .choose(&mut rng.0)
+                .unwrap()
+                .clone(),
+            )
+            .with_playback_rate(1.0)
+            .with_volume(audio_volumes.sfx as f64);
+
         gun.fire_cooldown = 1.0;
         // First, compute a ray from the mouse position.
         let origin = camera_transform.translation();

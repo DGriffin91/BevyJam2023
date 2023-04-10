@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 mod assets;
+mod audio;
 mod character_controller;
 mod levels;
 mod materials;
@@ -10,7 +11,8 @@ mod ui;
 mod units;
 mod util;
 
-use assets::{AssetProcPlugin, LevelAssets, PropAssets, TextureAssets, UnitAssets};
+use assets::{AssetProcPlugin, AudioAssets, LevelAssets, PropAssets, TextureAssets, UnitAssets};
+use audio::GameAudioPlugin;
 use bevy_asset_loader::prelude::{LoadingState, LoadingStateAppExt};
 
 use bevy_kira_audio::AudioPlugin;
@@ -74,6 +76,7 @@ fn main() {
         .add_collection_to_loading_state::<_, LevelAssets>(GameLoading::AssetLoading)
         .add_collection_to_loading_state::<_, UnitAssets>(GameLoading::AssetLoading)
         .add_collection_to_loading_state::<_, PropAssets>(GameLoading::AssetLoading)
+        .add_collection_to_loading_state::<_, AudioAssets>(GameLoading::AssetLoading)
         .insert_resource(AmbientLight {
             color: Color::BLACK,
             brightness: 0.0,
@@ -87,7 +90,7 @@ fn main() {
                 })
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        title: String::from("traverse"),
+                        title: String::from("Traverse"),
                         present_mode: PresentMode::AutoVsync,
                         fit_canvas_to_parent: true,
                         ..default()
@@ -110,6 +113,7 @@ fn main() {
         .add_plugin(PolylinePlugin)
         .add_plugin(PlayerPlugin)
         .add_plugin(AudioPlugin)
+        .add_plugin(GameAudioPlugin)
         .add_system(start_kitchen.in_schedule(OnEnter(GameLoading::Loaded)))
         .init_resource::<LevelsStarted>()
         .add_systems(

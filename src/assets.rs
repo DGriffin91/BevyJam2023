@@ -8,6 +8,7 @@ use bevy::{
     },
 };
 use bevy_asset_loader::prelude::*;
+use bevy_kira_audio::AudioSource;
 
 use crate::GameLoading;
 
@@ -196,7 +197,67 @@ pub struct PropAssets {
     pub crosshair: Handle<Scene>,
 }
 #[derive(AssetCollection, Resource)]
-pub struct AudioAssets {}
+pub struct AudioAssets {
+    // PLAYER GUN
+    #[asset(path = "audio/playergun1.flac")]
+    pub playergun1: Handle<AudioSource>,
+    #[asset(path = "audio/playergun2.flac")]
+    pub playergun2: Handle<AudioSource>,
+    #[asset(path = "audio/playergun3.flac")]
+    pub playergun3: Handle<AudioSource>,
+    #[asset(path = "audio/playergun4.flac")]
+    pub playergun4: Handle<AudioSource>,
+    #[asset(path = "audio/playergun5.flac")]
+    pub playergun5: Handle<AudioSource>,
+
+    // ENEMY GUN
+    #[asset(path = "audio/enemygun1.flac")]
+    pub enemygun1: Handle<AudioSource>,
+    #[asset(path = "audio/enemygun2.flac")]
+    pub enemygun2: Handle<AudioSource>,
+    #[asset(path = "audio/enemygun3.flac")]
+    pub enemygun3: Handle<AudioSource>,
+    #[asset(path = "audio/enemygun4.flac")]
+    pub enemygun4: Handle<AudioSource>,
+    #[asset(path = "audio/enemygun5.flac")]
+    pub enemygun5: Handle<AudioSource>,
+
+    // PLAYER HIT
+    #[asset(path = "audio/playerhit1.flac")]
+    pub playerhit1: Handle<AudioSource>,
+    #[asset(path = "audio/playerhit2.flac")]
+    pub playerhit2: Handle<AudioSource>,
+    #[asset(path = "audio/playerhit3.flac")]
+    pub playerhit3: Handle<AudioSource>,
+    #[asset(path = "audio/playerhit4.flac")]
+    pub playerhit4: Handle<AudioSource>,
+    #[asset(path = "audio/playerhit5.flac")]
+    pub playerhit5: Handle<AudioSource>,
+
+    // EXPLODE
+    #[asset(path = "audio/enemyexplode1.flac")]
+    pub enemyexplode1: Handle<AudioSource>,
+    #[asset(path = "audio/enemyexplode2.flac")]
+    pub enemyexplode2: Handle<AudioSource>,
+    #[asset(path = "audio/enemyexplode3.flac")]
+    pub enemyexplode3: Handle<AudioSource>,
+    #[asset(path = "audio/enemyexplode4.flac")]
+    pub enemyexplode4: Handle<AudioSource>,
+    #[asset(path = "audio/enemyexplode5.flac")]
+    pub enemyexplode5: Handle<AudioSource>,
+    #[asset(path = "audio/enemyexplode6.flac")]
+    pub enemyexplode6: Handle<AudioSource>,
+
+    // MUSIC
+    #[asset(path = "audio/theme1.flac")]
+    pub theme1: Handle<AudioSource>,
+    #[asset(path = "audio/theme3.flac")]
+    pub theme3: Handle<AudioSource>,
+    #[asset(path = "audio/kitchen.flac")]
+    pub kitchen: Handle<AudioSource>,
+    #[asset(path = "audio/shower.flac")]
+    pub shower: Handle<AudioSource>,
+}
 
 pub struct AssetProcPlugin;
 impl Plugin for AssetProcPlugin {

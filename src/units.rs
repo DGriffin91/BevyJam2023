@@ -4,14 +4,18 @@ use bevy::{math::vec3, prelude::*};
 use bevy_rapier3d::prelude::{Collider, QueryFilter, RapierContext};
 use rand::distributions::WeightedIndex;
 use rand::prelude::Distribution;
+use rand::seq::SliceRandom;
 use rand::Rng;
 
-use crate::assets::PropAssets;
+use crate::assets::{AudioAssets, PropAssets};
 use crate::character_controller::{LogicalPlayerEntity, ShootableByUnit};
 use crate::player::Projectile;
+use crate::ui::AudioVolumes;
 use crate::util::all_children;
 use crate::Health;
 use crate::{assets::UnitAssets, GameLoading, GameRng};
+use bevy_kira_audio::AudioControl;
+
 pub struct UnitsPlugin;
 impl Plugin for UnitsPlugin {
     fn build(&self, app: &mut App) {
@@ -464,6 +468,10 @@ pub fn shoot_stuff(
     time: Res<Time>,
     props: Res<PropAssets>,
     difficulty: Res<Difficulty>,
+    audio_assets: Res<AudioAssets>,
+    mut rng: ResMut<GameRng>,
+    audio: Res<bevy_kira_audio::Audio>,
+    audio_volumes: Res<AudioVolumes>,
 ) {
     for (_unit_entity, unit_trans, mut unit) in &mut unit_entities {
         unit.fire_cooldown -= unit.fire_rate * time.delta_seconds();
@@ -497,6 +505,21 @@ pub fn shoot_stuff(
                                 dist_trav: 0.0,
                             })
                             .insert(DamagePlayer(difficulty.bot_dmg()));
+                        audio
+                            .play(
+                                [
+                                    audio_assets.enemygun1.clone(),
+                                    audio_assets.enemygun2.clone(),
+                                    audio_assets.enemygun3.clone(),
+                                    audio_assets.enemygun4.clone(),
+                                    audio_assets.enemygun5.clone(),
+                                ]
+                                .choose(&mut rng.0)
+                                .unwrap()
+                                .clone(),
+                            )
+                            .with_playback_rate(1.0)
+                            .with_volume(audio_volumes.sfx as f64 * 1.2);
                     }
                 }
             }
@@ -509,12 +532,32 @@ pub fn blowup(
     mut unit_entities: Query<(Entity, &GlobalTransform, &mut UnitData, &Health)>,
     mut rng: ResMut<GameRng>,
     props: Res<PropAssets>,
+    audio_assets: Res<AudioAssets>,
+    audio: Res<bevy_kira_audio::Audio>,
+    audio_volumes: Res<AudioVolumes>,
 ) {
     for (entity, trans, _unit, health) in &mut unit_entities {
         if health.0 <= 0.0 {
             if commands.get_entity(entity).is_some() {
                 commands.entity(entity).despawn_recursive();
             }
+
+            audio
+                .play(
+                    [
+                        audio_assets.enemyexplode1.clone(),
+                        audio_assets.enemyexplode2.clone(),
+                        audio_assets.enemyexplode3.clone(),
+                        audio_assets.enemyexplode4.clone(),
+                        audio_assets.enemyexplode5.clone(),
+                        audio_assets.enemyexplode6.clone(),
+                    ]
+                    .choose(&mut rng.0)
+                    .unwrap()
+                    .clone(),
+                )
+                .with_playback_rate(1.8)
+                .with_volume((audio_volumes.sfx * 1.1) as f64);
             for _ in 0..16 {
                 let origin = trans.translation() + trans.up();
                 commands
@@ -547,6 +590,10 @@ struct DamagePlayer(f32);
 fn damage_player(
     mut player: Query<(&GlobalTransform, &LogicalPlayerEntity, &mut Health)>,
     mut projectiles: Query<(&GlobalTransform, &mut Projectile, &DamagePlayer)>,
+    audio_assets: Res<AudioAssets>,
+    mut rng: ResMut<GameRng>,
+    audio: Res<bevy_kira_audio::Audio>,
+    audio_volumes: Res<AudioVolumes>,
 ) {
     for (player_trans, _, mut health) in &mut player {
         for (proj_trans, _proj, damage) in &mut projectiles {
@@ -556,6 +603,21 @@ fn damage_player(
                 < 1.0
             {
                 health.0 -= damage.0;
+                audio
+                    .play(
+                        [
+                            audio_assets.playerhit1.clone(),
+                            audio_assets.playerhit2.clone(),
+                            audio_assets.playerhit3.clone(),
+                            audio_assets.playerhit4.clone(),
+                            audio_assets.playerhit5.clone(),
+                        ]
+                        .choose(&mut rng.0)
+                        .unwrap()
+                        .clone(),
+                    )
+                    .with_playback_rate(1.8)
+                    .with_volume((audio_volumes.sfx * 0.8) as f64);
             }
         }
     }

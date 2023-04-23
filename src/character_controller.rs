@@ -212,17 +212,18 @@ fn manage_cursor(
 
     if let Some(lock) = lock {
         if lock {
-            // Unlock
+            // Lock
             fps_controller.enable_input = true;
             window.cursor.grab_mode = CursorGrabMode::Locked;
             window.cursor.visible = false;
         } else {
-            // Lock
+            // Unlock
             fps_controller.enable_input = false;
             window.cursor.grab_mode = CursorGrabMode::None;
             window.cursor.visible = true;
         }
     }
+    #[cfg(not(target_os = "macos"))]
     if cursor_locked {
         let (w, h) = (window.width(), window.height());
         window.set_cursor_position(Some(vec2(w / 2.0, h / 2.0)));

@@ -5,31 +5,33 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-bevy = { version = "0.10", features = ["exr",    
-                                       "animation",
-                                       "bevy_asset",
-                                       "bevy_scene",
-                                       "bevy_winit",
-                                       "bevy_core_pipeline",
-                                       "bevy_pbr",
-                                       "bevy_gltf",
-                                       "bevy_render",
-                                       "bevy_sprite",
-                                       "bevy_text",
-                                       "bevy_ui",
-                                       "png",
-                                       "hdr",
-                                       "zstd",
-                                       "x11",
-                                       "ktx2",
-                                       "filesystem_watcher",
-                                       "tonemapping_luts"], default-features = false }
-                                       
+bevy = { version = "0.10", features = [
+    "exr",
+    "animation",
+    "bevy_asset",
+    "bevy_scene",
+    "bevy_winit",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_gltf",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_text",
+    "bevy_ui",
+    "png",
+    "hdr",
+    "zstd",
+    "x11",
+    "ktx2",
+    "filesystem_watcher",
+    "tonemapping_luts",
+], default-features = false }
+
 bevy_rapier3d = "0.21"
-bevy_fps_controller = "0.2"
+bevy_fps_controller = "=0.2.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-bevy_asset_loader = { version  = "0.16", features = ["progress_tracking"] }
+bevy_asset_loader = { version = "0.16", features = ["progress_tracking"] }
 bevy_egui = "0.20"
 rand = "0.8"
 rand_pcg = "0.3"
